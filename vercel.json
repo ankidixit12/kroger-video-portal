@@ -1,0 +1,12 @@
+{
+  "version": 2,
+  "builds": [
+    { "src": "api/**/*.js", "use": "@vercel/node" },
+    { "src": "public/**", "use": "@vercel/static" }
+  ],
+  "routes": [
+    { "src": "/api/divisions", "dest": "/api/divisions.js" },
+    { "src": "/api/videos/([^/]+)", "dest": "/api/videos/[division].js?division=$1" },
+    { "src": "/(.*)", "dest": "/public/$1" }
+  ]
+}

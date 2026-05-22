@@ -1,0 +1,22 @@
+# Vercel
+.vercel
+
+# macOS metadata
+.DS_Store
+__MACOSX/
+
+# Node
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Build output / logs
+dist/
+*.log
+
+# Editor / OS
+.vscode/
+.idea/
+Thumbs.db
+
