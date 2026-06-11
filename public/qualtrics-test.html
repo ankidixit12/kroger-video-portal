@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Qualtrics Intercept POC — Kroger Staffbase</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f0f4f8; min-height: 100vh; }
+
+    header {
+      background: #003087; color: #fff;
+      padding: 0 32px; height: 64px;
+      display: flex; align-items: center;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    }
+    .header-logo { display: flex; align-items: center; gap: 12px; }
+    .kroger-badge { background: #E31837; color: #fff; font-size: 0.75rem; font-weight: 800; letter-spacing: 1.5px; text-transform: uppercase; padding: 4px 10px; border-radius: 4px; }
+    .header-divider { width: 1px; height: 28px; background: rgba(255,255,255,0.3); }
+    header h1 { font-size: 1.1rem; font-weight: 600; color: #fff; }
+
+    main { max-width: 700px; margin: 40px auto; padding: 0 24px; }
+
+    .log-card {
+      background: #1e293b; border-radius: 10px; padding: 18px 20px;
+      font-family: monospace; font-size: 0.82rem; color: #94a3b8;
+      min-height: 100px;
+    }
+    .log-card .log-line { margin: 3px 0; }
+    .log-card .log-ok   { color: #4ade80; }
+    .log-card .log-err  { color: #f87171; }
+    .log-card .log-info { color: #60a5fa; }
+
+    #qualtrics-embedded {
+      margin-top: 28px; min-height: 60px;
+      background: #fff; border-radius: 10px; padding: 20px;
+      box-shadow: 0 1px 6px rgba(0,0,0,0.08);
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="header-logo">
+    <span class="kroger-badge">Kroger</span>
+    <div class="header-divider"></div>
+    <h1>Qualtrics Intercept POC</h1>
+  </div>
+</header>
+
+<main>
+  <div class="log-card" id="logBox">
+    <div class="log-line log-info">// Loading Qualtrics zone script…</div>
+  </div>
+
+  <!-- Target container for Embedded Feedback type -->
+  <div id="qualtrics-embedded"></div>
+</main>
+
+<script>
+  const ZONE_URL = 'https://zn2ukynhmxdi4ug6f-krogerxmit.siteintercept.qualtrics.com/SIE/?Q_ZID=ZN_2ukyNHmXdi4UG6f';
+
+  function log(msg, cls) {
+    const box  = document.getElementById('logBox');
+    const line = document.createElement('div');
+    line.className  = 'log-line ' + (cls || '');
+    line.textContent = '[' + new Date().toLocaleTimeString() + '] ' + msg;
+    box.appendChild(line);
+  }
+
+  const script = document.createElement('script');
+  script.type  = 'text/javascript';
+  script.src   = ZONE_URL;
+  script.async = true;
+  script.onload = function() {
+    log('Zone script loaded', 'log-ok');
+    if (window.QSI && window.QSI.API) {
+      window.QSI.API.load && window.QSI.API.load();
+      window.QSI.API.run  && window.QSI.API.run();
+      log('QSI.API.load() + QSI.API.run() called', 'log-ok');
+    }
+  };
+  script.onerror = function() {
+    log('Failed to load zone script', 'log-err');
+  };
+  document.head.appendChild(script);
+  log('Injecting: ' + ZONE_URL, 'log-info');
+</script>
+
+</body>
+</html>

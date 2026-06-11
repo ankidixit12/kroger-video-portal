@@ -7,7 +7,7 @@ import {
   BaseBlock,
 } from '@staffbase/widget-sdk';
 import KrogerVideoWidget from './KrogerVideoWidget';
-import VideoPickerEditor from './VideoPickerEditor';
+import EditorWrapper from './EditorWrapper';
 import { configurationSchema, uiSchema } from './configuration-schema';
 import pkg from '../package.json';
 
@@ -46,13 +46,21 @@ const factory: BlockFactory = (BaseBlockClass, _widgetApi) => {
     private doRenderEditor(): void {
       if (!this.editorRoot) return;
       this.editorRoot.render(
-        <VideoPickerEditor
-          initialDivision={this.getAttribute('division')   || ''}
-          initialVideoUrl={this.getAttribute('videourl')   || ''}
-          onSelect={(division, title, url) => {
-            this.setAttribute('division',   division);
-            this.setAttribute('videotitle', title);
-            this.setAttribute('videourl',   url);
+        <EditorWrapper
+          division={this.getAttribute('division')         || ''}
+          videotitle={this.getAttribute('videotitle')     || ''}
+          videourl={this.getAttribute('videourl')         || ''}
+          videoduration={this.getAttribute('videoduration') || ''}
+          videoexpiry={this.getAttribute('videoexpiry')   || ''}
+          videothumb={this.getAttribute('videothumb')     || ''}
+          onSelect={(division: string, title: string, url: string, duration: string, expiryDate: string, thumbnailUrl: string) => {
+            this.setAttribute('division',      division);
+            this.setAttribute('videotitle',    title);
+            this.setAttribute('videourl',      url);
+            this.setAttribute('videoduration', duration);
+            this.setAttribute('videoexpiry',   expiryDate);
+            this.setAttribute('videothumb',    thumbnailUrl);
+            this.doRenderEditor();
           }}
         />
       );
@@ -66,7 +74,7 @@ const factory: BlockFactory = (BaseBlockClass, _widgetApi) => {
 
     // ── Attribute changes ──────────────────────────────────────────────
     public static get observedAttributes(): string[] {
-      return ['division', 'videotitle', 'videourl'];
+      return ['division', 'videotitle', 'videourl', 'videoduration', 'videoexpiry', 'videothumb'];
     }
 
     public attributeChangedCallback(
@@ -74,14 +82,15 @@ const factory: BlockFactory = (BaseBlockClass, _widgetApi) => {
     ): void {
       super.attributeChangedCallback.apply(this, args);
       this.doRender();
+      this.doRenderEditor();
     }
   };
 };
 
 const blockDefinition: BlockDefinition = {
-  name: 'kroger-division-video-v10',
+  name: 'kroger-division-video-v12',
   factory,
-  attributes: ['division', 'videotitle', 'videourl'],
+  attributes: ['division', 'videotitle', 'videourl', 'videoduration', 'videoexpiry', 'videothumb'],
   blockLevel: 'block',
   configurationSchema,
   uiSchema,

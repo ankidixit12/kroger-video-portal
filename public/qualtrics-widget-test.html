@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Qualtrics Intercept</title>
+</head>
+<body>
+<script>
+  class FakeBaseBlock {
+    constructor() { this._attrs = {}; }
+    getAttribute(name) { return this._attrs[name] ?? null; }
+    setAttribute(name, value) { this._attrs[name] = value; }
+    attributeChangedCallback() {}
+    static get observedAttributes() { return []; }
+  }
+
+  const fakeWidgetApi = {
+    getUser: () => ({ id: 'test-user-001', externalId: 'test-user-001' }),
+  };
+
+  let registeredFactory = null;
+
+  window.defineBlock = function(externalDef) {
+    registeredFactory = externalDef.blockDefinition.factory;
+  };
+
+  const script = document.createElement('script');
+  script.src = '/kroger-qualtrics-intercept.js';
+  script.onload = function() {
+    const BlockClass = registeredFactory(FakeBaseBlock, fakeWidgetApi);
+    new BlockClass().renderBlock(document.body);
+  };
+  document.head.appendChild(script);
+</script>
+</body>
+</html>
