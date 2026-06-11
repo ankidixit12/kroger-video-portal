@@ -16,8 +16,11 @@ function stop(e: React.SyntheticEvent) { e.stopPropagation(); }
 
 function fmtDate(d: string): string {
   if (!d) return '';
-  const [y, m, day] = d.split('-');
-  return `${m}/${day}/${y}`;
+  try {
+    return new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric' }).format(new Date(d));
+  } catch {
+    return d;
+  }
 }
 
 function isExpiringSoon(d: string): boolean {
@@ -57,7 +60,8 @@ const S: Record<string, React.CSSProperties> = {
 };
 
 export default function EditorWrapper({ division: _division, videotitle, videourl, videoduration, videoexpiry, videothumb, onSelect }: Props) {
-  const [open, setOpen] = useState(false);
+  const [open, setOpen]       = useState(false);
+  const [hovered, setHovered] = useState(false);
 
   function handleSelect(d: string, t: string, u: string, dur: string, exp: string, th: string) {
     onSelect(d, t, u, dur, exp, th);
@@ -77,9 +81,20 @@ export default function EditorWrapper({ division: _division, videotitle, videour
 
       {videourl ? (
         <div style={S.selectedBody}>
-          <div style={S.card}>
+          <div
+            style={{ ...S.card, border: hovered ? '2px solid #1a3c8f' : '2px solid transparent', transition: 'border-color 0.15s', boxShadow: hovered ? '0 4px 16px rgba(26,60,143,0.2)' : '0 1px 6px rgba(0,0,0,0.1)' }}
+            onMouseEnter={() => setHovered(true)}
+            onMouseLeave={() => setHovered(false)}
+          >
             <div style={S.thumbWrap}>
               <img src={thumb} alt="" style={S.thumbImg} />
+              {hovered && (
+                <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.18)', zIndex: 1 }}>
+                  <span style={{ width: 52, height: 52, borderRadius: '50%', background: 'rgba(255,255,255,0.92)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 12px rgba(0,0,0,0.25)' }}>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="#003087"><path d="M8 5v14l11-7z"/></svg>
+                  </span>
+                </div>
+              )}
               <div style={S.actionBtns}>
                 <button style={S.iconBtn} title="Change video" onClick={e => { stop(e); if (!open) setOpen(true); }}>
                   <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">

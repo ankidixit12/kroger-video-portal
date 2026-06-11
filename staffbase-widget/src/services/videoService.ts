@@ -1,34 +1,9 @@
-import { DIVISION_VIDEOS } from '../videoData';
-import type { VideoEntry } from '../videoData';
-
-// webpack DefinePlugin replaces process.env.API_BASE_URL at build time
-declare const process: { env: Record<string, string | undefined> };
-const BASE_URL: string = process.env.API_BASE_URL || 'http://localhost:3000';
+const QUMU_API = 'https://staffbase-qumu-service-gfh7bccrescea0fe.eastus-01.azurewebsites.net/staffbase-qumu/kulus';
 
 const DIVISION_COLORS: Record<string, string> = {
   Dallas: '#004990', 'Fred Meyer': '#1a6b3a', Atlanta: '#EF3E42',
   "Roundy's": '#5B2C8D', Ruler: '#d46b00', "Smith's": '#0057a8',
-  Michigan: '#2e7d32', Columbus: '#37474f',
-};
-
-const DIVISION_REGION: Record<string, string> = {
-  Dallas: 'South',
-  'Fred Meyer': 'Pacific Northwest',
-  Atlanta: 'Southeast',
-  "Roundy's": 'Midwest',
-  Ruler: 'Midwest',
-  "Smith's": 'Mountain West',
-  Michigan: 'Midwest',
-  Columbus: 'Midwest',
-};
-
-const SERIES_CATEGORY: Record<string, string> = {
-  'Operations Training Series': 'Training',   'Customer Experience Series': 'Training',
-  'Compliance & Safety Series': 'Training',   'Fresh Department Series': 'Training',
-  'Technology Training Series': 'Training',   'A Fresh Welcome Orientation': 'Training',
-  'Leadership Development Series': 'HR & Benefits',
-  'Brand & Culture Series': 'Corporate',      'Regional Leadership Series': 'Corporate',
-  'Community Impact Series': 'Corporate',
+  Michigan: '#2e7d32', Columbus: '#37474f', GO: '#004990',
 };
 
 export interface VideoItem {
@@ -51,55 +26,71 @@ export interface VideoItem {
 export interface FetchParams {
   category?: string;
   limit?: number;
+  page?: number;
 }
 
-function buildFallback(category?: string): VideoItem[] {
-  let uid = 1;
-  const all: VideoItem[] = [];
-  Object.keys(DIVISION_VIDEOS).forEach(function(div) {
-    DIVISION_VIDEOS[div].forEach(function(v: VideoEntry) {
-      all.push({
-        id: String(uid++),
-        title: v.title,
-        description: v.series + ' — ' + v.author,
-        series: v.series,
-        author: v.author,
-        duration: v.duration,
-        category: SERIES_CATEGORY[v.series] || 'Corporate',
-        division: div,
-        region: DIVISION_REGION[div] || 'Other',
-        publishedAt: v.publishDate,
-        expiryDate: v.expiryDate,
-        thumbnailColor: DIVISION_COLORS[div] || '#004990',
-        videoUrl: v.url,
-      });
-    });
-  });
-  return category && category !== 'all'
-    ? all.filter(function(v) { return v.category === category; })
-    : all;
+function msToDuration(ms: number): string {
+  const totalSec = Math.floor(ms / 1000);
+  const min = Math.floor(totalSec / 60);
+  const sec = totalSec % 60;
+  return `${min}:${sec < 10 ? '0' + sec : sec}`;
+}
+
+function getMeta(metadata: any[], title: string): string | null {
+  const field = (metadata || []).find((m: any) => m.title === title);
+  if (!field || field.value == null) return null;
+  if (Array.isArray(field.value)) return field.value.length ? field.value[0] : null;
+  if (typeof field.value === 'object') return null;
+  return String(field.value);
+}
+
+function mapKuluToVideoItem(k: any): VideoItem {
+  const division = getMeta(k.metadata, 'Division') || '';
+  const category = getMeta(k.metadata, 'Category') || 'Corporate';
+  const description = getMeta(k.metadata, 'Description') || '';
+  const metaAuthor = getMeta(k.metadata, 'Author');
+  const author = metaAuthor || (k.publisher && k.publisher.name) || '';
+
+  return {
+    id: k.guid,
+    title: k.title || '',
+    description,
+    author,
+    duration: k.duration ? msToDuration(k.duration) : '0:00',
+    category,
+    division: division || undefined,
+    publishedAt: k.published || k.created || '',
+    thumbnailColor: DIVISION_COLORS[division] || DIVISION_COLORS[author] || '#004990',
+    thumbnailUrl: k.thumbnail && k.thumbnail.url ? k.thumbnail.url : undefined,
+    videoUrl: k.player || '',
+  };
 }
 
 export async function fetchVideos(params?: FetchParams): Promise<VideoItem[]> {
   const query = new URLSearchParams();
-  if (params && params.category && params.category !== 'all') query.set('category', params.category);
-  if (params && params.limit) query.set('_limit', String(params.limit));
+  query.set('page', String((params && params.page) || 1));
+  query.set('perPage', String((params && params.limit) || 20));
+  query.set('sort', '-updatedAt');
 
-  const qs  = query.toString();
-  const url = BASE_URL + '/api/qumu_cloud' + (qs ? '?' + qs : '');
+  const url = `${QUMU_API}?${query.toString()}`;
 
   const controller = new AbortController();
-  const timer = setTimeout(function() { controller.abort(); }, 30000);
+  const timer = setTimeout(() => controller.abort(), 30000);
 
   try {
     const res = await fetch(url, { signal: controller.signal });
     clearTimeout(timer);
     if (!res.ok) throw new Error('API error ' + res.status);
     const data = await res.json();
-    return Array.isArray(data) ? data : (data as any).data || [];
+    const items: VideoItem[] = (data.kulus || []).map(mapKuluToVideoItem);
+
+    if (params && params.category && params.category !== 'all') {
+      return items.filter(v => v.category === params.category);
+    }
+    return items;
   } catch (err) {
     clearTimeout(timer);
-    console.warn('[Demo] API unavailable — showing fallback data');
-    return buildFallback(params && params.category);
+    console.warn('[VideoService] API unavailable', err);
+    return [];
   }
 }

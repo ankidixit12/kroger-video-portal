@@ -9,8 +9,11 @@ const LOCATIONS = ['South', 'Pacific Northwest', 'Southeast', 'Midwest', 'Mounta
 
 function fmtDate(d: string): string {
   if (!d) return '—';
-  const [y, m, day] = d.split('-');
-  return `${m}/${day}/${y}`;
+  try {
+    return new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric' }).format(new Date(d));
+  } catch {
+    return d;
+  }
 }
 
 function isExpiringSoon(d: string): boolean {
@@ -34,9 +37,9 @@ function stop(e: React.SyntheticEvent) { e.stopPropagation(); }
 const S: Record<string, React.CSSProperties> = {
   root:       { fontFamily: "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif", background: '#fff', display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0, color: '#111827' },
   toolbar:    { display: 'flex', gap: 10, padding: '10px 18px', alignItems: 'center', flexWrap: 'wrap' as any, borderBottom: '1px solid #f3f4f6', flexShrink: 0 },
-  select:     { appearance: 'none' as any, display: 'inline-block', width: 'auto', padding: '7px 32px 7px 12px', border: '1.5px solid #1a3c8f', borderRadius: 8, fontSize: 13, color: '#1a3c8f', fontWeight: 600, background: "#fff url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24'%3E%3Cpath fill='none' stroke='%231a3c8f' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round' d='M6 9l6 6 6-6'/%3E%3C/svg%3E\") no-repeat right 10px center", cursor: 'pointer', minWidth: 150, boxSizing: 'border-box' as any },
+  select:     { appearance: 'none' as any, display: 'inline-block', width: 'calc(25% - 7px)', flexShrink: 0, padding: '7px 32px 7px 12px', border: '1.5px solid #1a3c8f', borderRadius: 8, fontSize: 13, color: '#1a3c8f', fontWeight: 600, background: "#fff url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24'%3E%3Cpath fill='none' stroke='%231a3c8f' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round' d='M6 9l6 6 6-6'/%3E%3C/svg%3E\") no-repeat right 10px center", cursor: 'pointer', boxSizing: 'border-box' as any },
   searchWrap: { position: 'relative' as any, flex: 1 },
-  searchInput:{ width: '100%', padding: '7px 14px', border: '1.5px solid #1a3c8f', borderRadius: 20, fontSize: 13, background: '#fff', color: '#111827', boxSizing: 'border-box' as any },
+  searchInput:{ width: '100%', padding: '7px 14px', border: '1.5px solid #1a3c8f', borderRadius: 8, fontSize: 13, background: '#fff', color: '#111827', boxSizing: 'border-box' as any },
   grid:       { display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0,1fr))', gridAutoRows: '260px', gap: 12, padding: '12px 14px', flex: 1, overflowY: 'auto' as any, minHeight: 0 },
   card:       { border: '1.5px solid #e5e7eb', borderRadius: 8, cursor: 'pointer', background: '#fff', display: 'flex', flexDirection: 'column' as any, transition: 'border-color 0.15s', overflow: 'hidden', height: '100%' },
   cardSel:    { border: '2px solid #1a3c8f', borderRadius: 8, cursor: 'pointer', background: '#fff', display: 'flex', flexDirection: 'column' as any, overflow: 'hidden', height: '100%' },
@@ -76,7 +79,8 @@ export default function VideoPickerEditor({ onSelect, onCancel }: Props) {
   const [filter,   setFilter]   = useState('');   // 'div:Dallas' | 'loc:Midwest' | ''
   const [search,   setSearch]   = useState('');
   const [page,     setPage]     = useState(1);
-  const [selVideo, setSelVideo] = useState<VideoItem | null>(null);
+  const [selVideo, setSelVideo]   = useState<VideoItem | null>(null);
+  const [hoveredId, setHoveredId] = useState<string | number | null>(null);
 
   function load() {
     setLoading(true);
@@ -190,24 +194,34 @@ export default function VideoPickerEditor({ onSelect, onCancel }: Props) {
 
         {!loading && !apiError && pageItems.map(v => {
           const selected = selVideo?.id === v.id;
+          const hovered  = hoveredId === v.id;
           const expired  = v.expiryDate && v.expiryDate < TODAY;
           const expiring = isExpiringSoon(v.expiryDate || '');
           const thumb    = thumbUrl(v);
+
+          const cardStyle: React.CSSProperties = selected
+            ? { ...S.cardSel, boxShadow: hovered ? '0 4px 16px rgba(26,60,143,0.25)' : 'none' }
+            : { ...S.card,    borderColor: hovered ? '#1a3c8f' : '#e5e7eb', boxShadow: hovered ? '0 4px 16px rgba(26,60,143,0.15)' : 'none' };
+
           return (
             <div
               key={v.id}
-              style={selected ? S.cardSel : S.card}
+              style={cardStyle}
               onClick={() => setSelVideo(v)}
+              onMouseEnter={() => setHoveredId(v.id)}
+              onMouseLeave={() => setHoveredId(null)}
             >
               <div style={{ ...S.thumbWrap, backgroundImage: `url(${thumb})` }}>
                 <div style={selected ? S.radioFill : S.radioRing}>
                   {selected && <div style={S.radioDot} />}
                 </div>
-                <div style={S.playBtn}>
-                  <span style={S.playCircle}>
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="#003087"><path d="M8 5v14l11-7z"/></svg>
-                  </span>
-                </div>
+                {hovered && (
+                  <div style={S.playBtn}>
+                    <span style={S.playCircle}>
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="#003087"><path d="M8 5v14l11-7z"/></svg>
+                    </span>
+                  </div>
+                )}
                 <span style={S.durBadge}>{v.duration}</span>
               </div>
               <div style={S.cardInfo}>
