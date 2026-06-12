@@ -5,19 +5,15 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Kroger Division Video Portal</title>
   <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     body {
-      font-family: system-ui, -apple-system, sans-serif;
-      margin: 0;
-      padding: 20px;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
       background: #f0f4f8;
     }
-    h1 { color: #003087; }
   </style>
 </head>
 <body>
-  <h1>Kroger Division Video Portal</h1>
-  <p>Widget assets loaded. See browser console for widget initialization.</p>
-  <script src="kroger-video-widget.js"></script>
-  <script src="widget-demo.js"></script>
+  <div id="root"></div>
+  <script src="widget-demo.js" defer></script>
 </body>
 </html>
