@@ -10,7 +10,7 @@ module.exports = [
     entry: { 'kroger-video-widget': './src/index.tsx' },
     output: {
       filename: '[name].js',
-      path: path.resolve(__dirname, '../public'),
+      path: path.resolve(__dirname, './dist'),
       clean: false,
     },
     resolve: { extensions: ['.tsx', '.ts', '.js'] },
@@ -36,7 +36,7 @@ module.exports = [
     entry: { 'kroger-qualtrics-intercept': './src/qualtrics-index.tsx' },
     output: {
       filename: '[name].js',
-      path: path.resolve(__dirname, '../public'),
+      path: path.resolve(__dirname, './dist'),
       clean: false,
     },
     resolve: { extensions: ['.tsx', '.ts', '.js'] },
@@ -64,7 +64,7 @@ module.exports = [
     entry: { 'widget-demo': './src/widget-demo.tsx' },
     output: {
       filename: '[name].js',
-      path: path.resolve(__dirname, '../public'),
+      path: path.resolve(__dirname, './dist'),
       clean: false,
     },
     resolve: { extensions: ['.tsx', '.ts', '.js'] },
