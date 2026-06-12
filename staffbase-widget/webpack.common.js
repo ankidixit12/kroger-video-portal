@@ -1,5 +1,6 @@
 const path    = require('path');
 const webpack = require('webpack');
+const CopyPlugin = require('copy-webpack-plugin');
 
 module.exports = [
   // ── Staffbase SDK widget (kroger-video-widget.js) ──────────────────────
@@ -19,6 +20,11 @@ module.exports = [
         'process.env.API_BASE_URL': JSON.stringify(
           process.env.API_BASE_URL || 'http://localhost:3000'
         ),
+      }),
+      new CopyPlugin({
+        patterns: [
+          { from: 'public', to: '' },
+        ],
       }),
     ],
     module: {
@@ -45,6 +51,11 @@ module.exports = [
         'process.env.API_BASE_URL': JSON.stringify(
           process.env.API_BASE_URL || 'http://localhost:3000'
         ),
+      }),
+      new CopyPlugin({
+        patterns: [
+          { from: 'public', to: '' },
+        ],
       }),
     ],
     module: {
@@ -73,6 +84,11 @@ module.exports = [
         'process.env.API_BASE_URL': JSON.stringify(
           process.env.API_BASE_URL || 'http://localhost:3000'
         ),
+      }),
+      new CopyPlugin({
+        patterns: [
+          { from: 'public', to: '' },
+        ],
       }),
     ],
     module: {
