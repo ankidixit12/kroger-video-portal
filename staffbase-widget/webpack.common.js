@@ -1,6 +1,7 @@
 const path    = require('path');
 const webpack = require('webpack');
 const CopyPlugin = require('copy-webpack-plugin');
+require('dotenv').config();
 
 module.exports = [
   // ── Staffbase SDK widget (kroger-video-widget.js) ──────────────────────
@@ -17,9 +18,9 @@ module.exports = [
     resolve: { extensions: ['.tsx', '.ts', '.js'] },
     plugins: [
       new webpack.DefinePlugin({
-        'process.env.API_BASE_URL': JSON.stringify(
-          process.env.API_BASE_URL || 'http://localhost:3000'
-        ),
+        'process.env.API_BASE_URL':    JSON.stringify(process.env.API_BASE_URL    || 'http://localhost:3000'),
+        'process.env.QUMU_USERNAME':   JSON.stringify(process.env.QUMU_USERNAME   || ''),
+        'process.env.QUMU_PASSWORD':   JSON.stringify(process.env.QUMU_PASSWORD   || ''),
       }),
       new CopyPlugin({
         patterns: [
@@ -48,9 +49,9 @@ module.exports = [
     resolve: { extensions: ['.tsx', '.ts', '.js'] },
     plugins: [
       new webpack.DefinePlugin({
-        'process.env.API_BASE_URL': JSON.stringify(
-          process.env.API_BASE_URL || 'http://localhost:3000'
-        ),
+        'process.env.API_BASE_URL':    JSON.stringify(process.env.API_BASE_URL    || 'http://localhost:3000'),
+        'process.env.QUMU_USERNAME':   JSON.stringify(process.env.QUMU_USERNAME   || ''),
+        'process.env.QUMU_PASSWORD':   JSON.stringify(process.env.QUMU_PASSWORD   || ''),
       }),
       new CopyPlugin({
         patterns: [
@@ -81,9 +82,9 @@ module.exports = [
     resolve: { extensions: ['.tsx', '.ts', '.js'] },
     plugins: [
       new webpack.DefinePlugin({
-        'process.env.API_BASE_URL': JSON.stringify(
-          process.env.API_BASE_URL || 'http://localhost:3000'
-        ),
+        'process.env.API_BASE_URL':    JSON.stringify(process.env.API_BASE_URL    || 'http://localhost:3000'),
+        'process.env.QUMU_USERNAME':   JSON.stringify(process.env.QUMU_USERNAME   || ''),
+        'process.env.QUMU_PASSWORD':   JSON.stringify(process.env.QUMU_PASSWORD   || ''),
       }),
       new CopyPlugin({
         patterns: [

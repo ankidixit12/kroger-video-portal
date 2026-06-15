@@ -1,4 +1,12 @@
+declare const process: { env: Record<string, string | undefined> };
+
 const QUMU_API = 'https://staffbase-qumu-service-gfh7bccrescea0fe.eastus-01.azurewebsites.net/staffbase-qumu/kulus';
+
+const _u = process.env.QUMU_USERNAME || '';
+const _p = process.env.QUMU_PASSWORD || '';
+const AUTH_HEADER: Record<string, string> = _u
+  ? { Authorization: 'Basic ' + btoa(_u + ':' + _p) }
+  : {};
 
 const DIVISION_COLORS: Record<string, string> = {
   Dallas: '#004990', 'Fred Meyer': '#1a6b3a', Atlanta: '#EF3E42',
@@ -99,7 +107,7 @@ export async function fetchVideos(params?: FetchParams): Promise<VideoItem[]> {
   const timer = setTimeout(() => controller.abort(), 30000);
 
   try {
-    const res = await fetch(url, { signal: controller.signal });
+    const res = await fetch(url, { signal: controller.signal, headers: AUTH_HEADER });
     clearTimeout(timer);
     if (!res.ok) throw new Error('API error ' + res.status);
     const data = await res.json();

@@ -252,8 +252,9 @@ async function loadVideos(category) {
   emptyState.querySelector('span').textContent = 'Fetching from the video library.';
 
   var query = new URLSearchParams({ page: '1', perPage: '100', sort: '-updatedAt' });
+  var authHeader = { Authorization: 'Basic ' + btoa('qumu:qumu@123456') };
   try {
-    var res = await fetch(QUMU_API + '?' + query.toString());
+    var res = await fetch(QUMU_API + '?' + query.toString(), { headers: authHeader });
     if (!res.ok) throw new Error('API error ' + res.status);
     var data = await res.json();
     allVideos = (data.kulus || []).map(mapKuluToVideoItem);
