@@ -111,7 +111,6 @@ export default function EditorWrapper({ division: _division, videotitle, videour
                   </svg>
                 </button>
               </div>
-              {videoduration && <span style={S.durBadge}>{videoduration}</span>}
             </div>
             <div style={S.cardInfo}>
               <p style={S.videoTitle}>{videotitle || 'Selected Video'}</p>

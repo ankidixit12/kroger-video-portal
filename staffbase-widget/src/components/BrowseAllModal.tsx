@@ -403,7 +403,6 @@ const BrowseAllModal: React.FC<BrowseAllModalProps> = ({ onClose }) => {
                     >
                       {video.category}
                     </span>
-                    <span style={{ fontSize: 11, color: '#9ca3af' }}>{video.duration}</span>
                     <span style={{ fontSize: 11, color: '#9ca3af' }}>{formatDate(video.publishedAt)}</span>
                   </div>
                 </div>
