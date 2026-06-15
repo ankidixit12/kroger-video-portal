@@ -115,9 +115,9 @@ function VideoCard({ video, query, selected, onSelect }: VideoCardProps) {
           style={{ fontSize: 13.5, fontWeight: 700, color: '#111827', lineHeight: 1.4, margin: 0, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}
           dangerouslySetInnerHTML={{ __html: highlight(video.title, query) }}
         />
-        <p style={{ fontSize: 11.5, color: '#6b7280', margin: 0, lineHeight: 1.3 }}>
+        {/* <p style={{ fontSize: 11.5, color: '#6b7280', margin: 0, lineHeight: 1.3 }}>
           {video.series || video.category || ''}
-        </p>
+        </p> */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 2, marginTop: 4 }}>
           {[
             { label: 'Author',    value: video.author || '—' },
