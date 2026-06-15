@@ -40,9 +40,26 @@ function msToDuration(ms: number): string {
 function getMeta(metadata: any[], title: string): string | null {
   const field = (metadata || []).find((m: any) => m.title === title);
   if (!field || field.value == null) return null;
-  if (Array.isArray(field.value)) return field.value.length ? field.value[0] : null;
-  if (typeof field.value === 'object') return null;
+  if (Array.isArray(field.value)) return field.value.length ? String(field.value[0]) : null;
+  if (typeof field.value === 'object') {
+    // Handle objects like {guid, value} by extracting the value property
+    if (field.value && field.value.value !== undefined) {
+      return String(field.value.value);
+    }
+    return null;
+  }
   return String(field.value);
+}
+
+function safeString(val: any): string {
+  if (val == null) return '';
+  if (typeof val === 'string') return val;
+  if (typeof val === 'object') {
+    if (val.value !== undefined) return String(val.value);
+    if (val.name !== undefined) return String(val.name);
+    return '';
+  }
+  return String(val);
 }
 
 function mapKuluToVideoItem(k: any): VideoItem {
@@ -50,23 +67,23 @@ function mapKuluToVideoItem(k: any): VideoItem {
   const category = getMeta(k.metadata, 'Category') || 'Corporate';
   const description = getMeta(k.metadata, 'Description') || '';
   const metaAuthor = getMeta(k.metadata, 'Author');
-  const author = metaAuthor || (k.publisher && k.publisher.name) || '';
+  const author = safeString(metaAuthor || (k.publisher && k.publisher.name) || '');
 
   return {
     id: k.guid,
-    title: k.title || '',
-    description,
+    title: safeString(k.title || ''),
+    description: safeString(description),
     author,
     duration: k.duration ? msToDuration(k.duration) : '0:00',
-    category,
-    division: division || undefined,
-    publishedAt: k.published || k.created || '',
+    category: safeString(category),
+    division: division ? safeString(division) : undefined,
+    publishedAt: safeString(k.published || k.created || ''),
     // Qumu uses withdrawOn as the effective video expiry date.
-    expiryDate: k.withdrawOn || k.expiryDate || '',
-    withdrawOn: k.withdrawOn || undefined,
+    expiryDate: safeString(k.withdrawOn || k.expiryDate || ''),
+    withdrawOn: k.withdrawOn ? safeString(k.withdrawOn) : undefined,
     thumbnailColor: DIVISION_COLORS[division] || DIVISION_COLORS[author] || '#004990',
     thumbnailUrl: k.thumbnail && k.thumbnail.url ? k.thumbnail.url : undefined,
-    videoUrl: k.player || '',
+    videoUrl: safeString(k.player || ''),
   };
 }
 
