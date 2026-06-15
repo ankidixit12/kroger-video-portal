@@ -1,7 +1,10 @@
 const path    = require('path');
 const webpack = require('webpack');
 const CopyPlugin = require('copy-webpack-plugin');
-require('dotenv').config();
+require('dotenv').config({
+  path: path.resolve(__dirname, '.env'),
+  override: true,
+});
 
 module.exports = [
   // ── Staffbase SDK widget (kroger-video-widget.js) ──────────────────────

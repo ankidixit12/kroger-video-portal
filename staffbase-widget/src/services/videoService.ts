@@ -7,6 +7,8 @@ const _p = process.env.QUMU_PASSWORD || '';
 const AUTH_HEADER: Record<string, string> = _u
   ? { Authorization: 'Basic ' + btoa(_u + ':' + _p) }
   : {};
+  
+console.log("Auth header set:", AUTH_HEADER);  
 
 const DIVISION_COLORS: Record<string, string> = {
   Dallas: '#004990', 'Fred Meyer': '#1a6b3a', Atlanta: '#EF3E42',
