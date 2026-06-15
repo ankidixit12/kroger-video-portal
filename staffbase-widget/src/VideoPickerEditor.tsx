@@ -2,10 +2,17 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { fetchVideos, VideoItem } from './services/videoService';
 
 const PAGE_SIZE = 32;
-const TODAY     = new Date().toISOString().slice(0, 10);
 
-const DIVISIONS = ['Dallas', 'Fred Meyer', 'Atlanta', "Roundy's", 'Ruler', "Smith's", 'Michigan', 'Columbus'];
-const LOCATIONS = ['South', 'Pacific Northwest', 'Southeast', 'Midwest', 'Mountain West'];
+function getExpiryDate(v: VideoItem): string {
+  return (v.withdrawOn || v.expiryDate || '').trim();
+}
+
+function isExpired(d: string): boolean {
+  if (!d) return false;
+  const t = new Date(d).getTime();
+  if (Number.isNaN(t)) return false;
+  return t < Date.now();
+}
 
 function fmtDate(d: string): string {
   if (!d) return '—';
@@ -52,6 +59,7 @@ const S: Record<string, React.CSSProperties> = {
   durBadge:   { position: 'absolute' as any, bottom: 6, right: 6, background: 'rgba(0,0,0,0.72)', color: '#fff', fontSize: 10, fontWeight: 600, padding: '2px 6px', borderRadius: 4, pointerEvents: 'none' as any },
   cardInfo:   { padding: '10px 12px 12px', display: 'flex', flexDirection: 'column' as any, gap: 5, flex: 1, overflow: 'hidden' },
   cardTitle:  { fontSize: 13, fontWeight: 700, color: '#111827', lineHeight: 1.4, display: '-webkit-box' as any, WebkitLineClamp: 2 as any, WebkitBoxOrient: 'vertical' as any, overflow: 'hidden', marginBottom: 2 },
+  cardDesc:   { fontSize: 11, color: '#6b7280', lineHeight: 1.4, display: '-webkit-box' as any, WebkitLineClamp: 2 as any, WebkitBoxOrient: 'vertical' as any, overflow: 'hidden', marginBottom: 4 },
   cardSeries: { fontSize: 11, color: '#6b7280', lineHeight: 1.3, marginBottom: 4, whiteSpace: 'nowrap' as any, overflow: 'hidden', textOverflow: 'ellipsis' },
   metaRow:    { display: 'flex', justifyContent: 'space-between', fontSize: 11, lineHeight: 1.4 },
   metaLabel:  { color: '#9ca3af' },
@@ -110,6 +118,17 @@ export default function VideoPickerEditor({ onSelect, onCancel }: Props) {
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const pageItems  = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
+  // Derive the available Division / Location options from the API response
+  // instead of relying on a hardcoded list.
+  const divisionOptions = useMemo(
+    () => Array.from(new Set(videos.map(v => v.division).filter(Boolean) as string[])).sort(),
+    [videos],
+  );
+  const locationOptions = useMemo(
+    () => Array.from(new Set(videos.map(v => v.region).filter(Boolean) as string[])).sort(),
+    [videos],
+  );
+
   function handleFilterChange(val: string) {
     setFilter(val);
     setSearch('');
@@ -119,7 +138,7 @@ export default function VideoPickerEditor({ onSelect, onCancel }: Props) {
 
   function handleAdd() {
     if (!selVideo) return;
-    onSelect(selVideo.division || '', selVideo.title, selVideo.videoUrl, selVideo.duration || '', selVideo.expiryDate || '', selVideo.thumbnailUrl || '');
+    onSelect(selVideo.division || '', selVideo.title, selVideo.videoUrl, selVideo.duration || '', getExpiryDate(selVideo), selVideo.thumbnailUrl || '');
   }
 
   return (
@@ -135,12 +154,16 @@ export default function VideoPickerEditor({ onSelect, onCancel }: Props) {
           onMouseDown={stop}
         >
           <option value="">All Division and Location</option>
-          <optgroup label="── Divisions ──">
-            {DIVISIONS.map(d => <option key={d} value={'div:' + d}>{d}</option>)}
-          </optgroup>
-          <optgroup label="── Locations ──">
-            {LOCATIONS.map(l => <option key={l} value={'loc:' + l}>{l}</option>)}
-          </optgroup>
+          {divisionOptions.length > 0 && (
+            <optgroup label="── Divisions ──">
+              {divisionOptions.map(d => <option key={d} value={'div:' + d}>{d}</option>)}
+            </optgroup>
+          )}
+          {locationOptions.length > 0 && (
+            <optgroup label="── Locations ──">
+              {locationOptions.map(l => <option key={l} value={'loc:' + l}>{l}</option>)}
+            </optgroup>
+          )}
         </select>
 
         {/* Search */}
@@ -195,8 +218,9 @@ export default function VideoPickerEditor({ onSelect, onCancel }: Props) {
         {!loading && !apiError && pageItems.map(v => {
           const selected = selVideo?.id === v.id;
           const hovered  = hoveredId === v.id;
-          const expired  = v.expiryDate && v.expiryDate < TODAY;
-          const expiring = isExpiringSoon(v.expiryDate || '');
+          const expiryDate = getExpiryDate(v);
+          const expired  = isExpired(expiryDate);
+          const expiring = isExpiringSoon(expiryDate);
           const thumb    = thumbUrl(v);
 
           const cardStyle: React.CSSProperties = selected
@@ -226,13 +250,13 @@ export default function VideoPickerEditor({ onSelect, onCancel }: Props) {
               </div>
               <div style={S.cardInfo}>
                 <div style={S.cardTitle}>{v.title}</div>
+                {v.description && <div style={S.cardDesc}>{v.description}</div>}
                 <div style={S.cardSeries}>{v.division ? v.division + (v.region ? ' · ' + v.region : '') : v.series || v.category}</div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
                   {[
-                    ['Duration',  v.duration,                               false],
                     ['Author',    v.author || '—',                          false],
                     ['Published', fmtDate(v.publishedAt),                   false],
-                    ['Expires',   fmtDate(v.expiryDate || ''), !!(expired || expiring)],
+                    ['Expires',   fmtDate(expiryDate), !!(expired || expiring)],
                   ].map(([label, val, red]) => (
                     <div key={label as string} style={S.metaRow}>
                       <span style={S.metaLabel}>{label}</span>

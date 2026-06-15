@@ -32,6 +32,10 @@ function formatDate(iso) {
   } catch(e) { return iso; }
 }
 
+function getExpiryDate(video) {
+  return video.withdrawOn || video.expiryDate || '';
+}
+
 function extractYtId(url) {
   const m = (url || '').match(
     /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([a-zA-Z0-9_-]{11})/
@@ -157,7 +161,7 @@ function renderCards(videos, query) {
           '<div class="meta-row"><span class="meta-label">Duration</span><span class="meta-value">' + escHtml(v.duration || '—') + '</span></div>' +
           '<div class="meta-row"><span class="meta-label">Author</span><span class="meta-value">' + escHtml(v.author || '—') + '</span></div>' +
           '<div class="meta-row"><span class="meta-label">Published</span><span class="meta-value">' + formatDate(v.publishedAt) + '</span></div>' +
-          '<div class="meta-row"><span class="meta-label">Expires</span><span class="meta-value">' + formatDate(v.expiryDate) + '</span></div>' +
+          '<div class="meta-row"><span class="meta-label">Expires</span><span class="meta-value">' + formatDate(getExpiryDate(v)) + '</span></div>' +
         '</div>' +
       '</div>';
 

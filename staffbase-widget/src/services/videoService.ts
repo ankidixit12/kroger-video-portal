@@ -18,6 +18,7 @@ export interface VideoItem {
   region?: string;
   publishedAt: string;
   expiryDate?: string;
+  withdrawOn?: string;
   thumbnailColor: string;
   thumbnailUrl?: string;
   videoUrl: string;
@@ -60,6 +61,9 @@ function mapKuluToVideoItem(k: any): VideoItem {
     category,
     division: division || undefined,
     publishedAt: k.published || k.created || '',
+    // Qumu uses withdrawOn as the effective video expiry date.
+    expiryDate: k.withdrawOn || k.expiryDate || '',
+    withdrawOn: k.withdrawOn || undefined,
     thumbnailColor: DIVISION_COLORS[division] || DIVISION_COLORS[author] || '#004990',
     thumbnailUrl: k.thumbnail && k.thumbnail.url ? k.thumbnail.url : undefined,
     videoUrl: k.player || '',
