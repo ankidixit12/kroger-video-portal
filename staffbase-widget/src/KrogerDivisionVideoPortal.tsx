@@ -40,7 +40,6 @@ function VideoCard({ video, query, selected, onSelect }: VideoCardProps) {
   const [playing, setPlaying] = useState(false);
   const ytId    = extractYtId(video.videoUrl);
   const thumbUrl = video.thumbnailUrl || `https://picsum.photos/seed/kroger${video.id}/640/360`;
-
   return (
     <div
       onClick={() => onSelect(video.id)}
@@ -121,10 +120,9 @@ function VideoCard({ video, query, selected, onSelect }: VideoCardProps) {
         </p>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 2, marginTop: 4 }}>
           {[
-            { label: 'Duration',  value: video.duration || '—' },
             { label: 'Author',    value: video.author || '—' },
             { label: 'Published', value: formatDate(video.publishedAt) },
-            { label: 'Expires',   value: formatDate(video.expiryDate) },
+            { label: 'Expires',   value: formatDate(video.withdrawOn) },
           ].map(({ label, value }) => (
             <div key={label} style={{ display: 'flex', alignItems: 'baseline', gap: 8, fontSize: 11.5 }}>
               <span style={{ color: '#6b7280', minWidth: 64, flexShrink: 0 }}>{label}</span>
