@@ -98,7 +98,7 @@ function mapKuluToVideoItem(k: any): VideoItem {
 export async function fetchVideos(params?: FetchParams): Promise<VideoItem[]> {
   const query = new URLSearchParams();
   query.set('page', String((params && params.page) || 1));
-  query.set('perPage', String((params && params.limit) || 20));
+  query.set('perPage', String((params && params.limit) || 5));
   query.set('sort', '-updatedAt');
 
   const url = `${QUMU_API}?${query.toString()}`;
