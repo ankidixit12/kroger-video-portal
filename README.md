@@ -2,6 +2,7 @@ https://staffbase-qumu-service-gfh7bccrescea0fe.eastus-01.azurewebsites.net/staf
 qumu
 qumu@123456
 
+front door-> https://videowidget-frontdoor-gxfwf7a3cygtbjf7.a01.azurefd.net/
 ## Qumu Widget CORS Lock (Staffbase Origin)
 
 This repository now includes Azure Static Web Apps CORS headers for the Staffbase widget build:
