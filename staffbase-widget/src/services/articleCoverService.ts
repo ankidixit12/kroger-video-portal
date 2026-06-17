@@ -97,32 +97,37 @@ function hookTopFetch(thumbUrl: string): void {
       }
     }
 
-    // Intercept article save (PATCH / PUT / POST to article endpoints)
-    const isArticleSave =
-      (url.includes('/api/articles/') || url.includes('/api/v3/contents/')) &&
+    // Intercept ANY mutating call (PATCH/PUT/POST) to the Staffbase origin
+    const isMutating =
+      url.startsWith(origin) &&
       (method === 'PATCH' || method === 'PUT' || method === 'POST') &&
       typeof init?.body === 'string';
 
-    if (isArticleSave && thumbUrl) {
+    if (isMutating) {
       try {
         const body = JSON.parse(init!.body as string);
-        console.info('[KrogerVideoWidget] Intercepted article save. Original payload:', JSON.parse(JSON.stringify(body)));
+        console.info('[KrogerVideoWidget] Mutating call intercepted:', method, url.replace(origin, ''), JSON.parse(JSON.stringify(body)));
 
-        // Inject the thumbnail — try the most likely field names
-        body.thumbnail    = { url: thumbUrl, type: 'image/jpeg' };
-        body.headerImage  = { url: thumbUrl };
+        // Only inject thumbnail if this looks like an article/content save
+        const isArticleSave =
+          url.includes('/api/articles/') ||
+          url.includes('/api/v3/contents/') ||
+          url.includes('/api/content/') ||
+          url.includes('/api/news/') ||
+          url.includes('/api/posts/');
 
-        const patched = { ...init, body: JSON.stringify(body) };
-        console.info('[KrogerVideoWidget] Injected thumbnail into payload:', thumbUrl);
-
-        // Unhook after first successful injection
-        clearTimeout(restoreTimer);
-        (topWin as any).fetch = originalFetch;
-        console.info('[KrogerVideoWidget] Fetch hook removed after injection.');
-
-        return originalFetch(input, patched);
+        if (isArticleSave) {
+          body.thumbnail   = { url: thumbUrl, type: 'image/jpeg' };
+          body.headerImage = { url: thumbUrl };
+          const patched = { ...init, body: JSON.stringify(body) };
+          console.info('[KrogerVideoWidget] ✅ Injected thumbnail into payload:', thumbUrl);
+          clearTimeout(restoreTimer);
+          (topWin as any).fetch = originalFetch;
+          console.info('[KrogerVideoWidget] Fetch hook removed after injection.');
+          return originalFetch(input, patched);
+        }
       } catch (e) {
-        console.warn('[KrogerVideoWidget] Payload injection failed:', e);
+        console.warn('[KrogerVideoWidget] Could not parse body:', e);
       }
     }
 
@@ -130,6 +135,49 @@ function hookTopFetch(thumbUrl: string): void {
   };
 
   console.info('[KrogerVideoWidget] Fetch hook installed. Thumbnail will be injected on next article save/publish.');
+
+  // Also hook XMLHttpRequest in case Staffbase uses XHR instead of fetch
+  const OrigXHR = (topWin as any).XMLHttpRequest;
+  (topWin as any).XMLHttpRequest = function () {
+    const xhr = new OrigXHR();
+    const originalOpen = xhr.open.bind(xhr);
+    const originalSend = xhr.send.bind(xhr);
+    let _method = '';
+    let _url    = '';
+
+    xhr.open = function (method: string, url: string, ...rest: any[]) {
+      _method = method.toUpperCase();
+      _url    = url;
+      return originalOpen(method, url, ...rest);
+    };
+
+    xhr.send = function (body: any) {
+      if (_url.startsWith(origin) && (_method === 'PATCH' || _method === 'PUT' || _method === 'POST')) {
+        console.info('[KrogerVideoWidget] XHR mutating call:', _method, _url.replace(origin, ''));
+        if (typeof body === 'string') {
+          try {
+            const parsed = JSON.parse(body);
+            console.info('[KrogerVideoWidget] XHR payload:', JSON.parse(JSON.stringify(parsed)));
+            const isArticleSave =
+              _url.includes('/api/articles/') ||
+              _url.includes('/api/v3/contents/') ||
+              _url.includes('/api/content/') ||
+              _url.includes('/api/news/') ||
+              _url.includes('/api/posts/');
+            if (isArticleSave) {
+              parsed.thumbnail   = { url: thumbUrl, type: 'image/jpeg' };
+              parsed.headerImage = { url: thumbUrl };
+              console.info('[KrogerVideoWidget] ✅ XHR thumbnail injected:', thumbUrl);
+              return originalSend(JSON.stringify(parsed));
+            }
+          } catch {}
+        }
+      }
+      return originalSend(body);
+    };
+    return xhr;
+  };
+  console.info('[KrogerVideoWidget] XHR hook installed.');
 }
 
 // ── Public entry point ─────────────────────────────────────────────────────
