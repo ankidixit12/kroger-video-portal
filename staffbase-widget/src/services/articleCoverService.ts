@@ -135,7 +135,7 @@ async function tryApiInjection(thumbnailUrl: string): Promise<boolean> {
     return false;
   }
   try {
-    const url = `${getTopOrigin()}/api/v3/contents/${contentId}`;
+    const url = `${getTopOrigin()}/api/articles/${contentId}`;
     const payloads = [
       { thumbnail:     { url: thumbnailUrl, type: 'image' } },
       { headerImage:   { url: thumbnailUrl } },
