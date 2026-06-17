@@ -4,6 +4,9 @@ qumu@123456
 
 https://www.youtube.com/watch?v=62XccJOh9Lg&list=RD62XccJOh9Lg&start_radio=1
 
+
+https://krogertest.staffbase.com/api/iframely?url=https%3A%2F%2Fwww.youtube.com%2Fwatch%3Fv%3D62XccJOh9Lg%26list%3DRD62XccJOh9Lg%26start_radio%3D1&nowrap=on&callback=
+
 front door-> https://videowidget-frontdoor-gxfwf7a3cygtbjf7.a01.azurefd.net/
 ## Qumu Widget CORS Lock (Staffbase Origin)
 
