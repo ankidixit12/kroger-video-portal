@@ -1,13 +1,14 @@
 /**
  * Injects a video thumbnail into Staffbase's Article Image/Video field.
  *
- * The Article Image/Video URL input is NOT in the DOM until the user (or we)
- * clicks that section. Strategy:
- *   1. Resolve thumbnail via iframely.
- *   2. Try to auto-click the Article Image/Video container to reveal the URL input.
- *   3. Watch the parent frame DOM with MutationObserver — the moment a URL
- *      input appears, fill it and disconnect.
- *   4. Also retry direct injection every 500 ms for 10 seconds as a fallback.
+ * The Article Image/Video section is a media picker with a multi-step UI:
+ *   1. Click the "Article Image/Video" section label → drag-drop panel opens
+ *   2. Click "Choose from ∨" button → dropdown appears
+ *   3. Click "URL" / "By URL" option → URL input appears
+ *   4. Fill the URL input via React native setter
+ *
+ * A MutationObserver runs throughout to catch the URL input the moment it
+ * appears, regardless of which step triggers it.
  */
 
 function topFetch(input: string, init?: RequestInit): Promise<Response> {
@@ -64,146 +65,146 @@ async function fetchIframelyThumbnail(videoUrl: string): Promise<string | null> 
   }
 }
 
-// ── DOM injection ──────────────────────────────────────────────────────────
+// ── DOM helpers ─────────────────────────────────────────────────────────────
 
-const KNOWN_SELECTORS = [
-  // data-testid
+// URL input selectors — tried each time an input might have appeared
+const URL_INPUT_SELECTORS = [
+  'input[type="url"]',
   '[data-testid="content-header-media-url-input"]',
   '[data-testid="article-header-image-url"]',
   '[data-testid="cover-image-url-input"]',
   '[data-testid="media-url-input"]',
   '[data-testid="thumbnail-url-input"]',
   '[data-testid="header-image-url"]',
-  '[data-testid="image-url"]',
-  '[data-testid="headerImage"]',
-  // name
+  '[data-testid="image-url-input"]',
+  '[data-testid="url-input"]',
   'input[name="headerImageUrl"]',
   'input[name="coverImageUrl"]',
   'input[name="thumbnailUrl"]',
-  'input[name="thumbnail"]',
-  'input[name="headerImage"]',
-  'input[name="coverImage"]',
   'input[name="imageUrl"]',
-  // type="url" (Staffbase uses this for media URL fields)
-  'input[type="url"]',
-  // placeholder / aria-label
+  'input[name="mediaUrl"]',
+  'input[placeholder*="https" i]',
+  'input[placeholder*="url" i]',
   'input[placeholder*="image" i]',
   'input[placeholder*="thumbnail" i]',
-  'input[placeholder*="video" i]',
-  'input[placeholder*="url" i]',
-  '[aria-label*="image" i]',
-  '[aria-label*="thumbnail" i]',
-  '[aria-label*="cover" i]',
-  '[aria-label*="header" i]',
+  '[aria-label*="url" i]',
+  '[aria-label*="image url" i]',
 ];
 
-// Selectors for the Article Image/Video container that we should click to
-// reveal the URL input panel.
-const MEDIA_SECTION_SELECTORS = [
-  '[data-testid="article-header-media"]',
-  '[data-testid="cover-media"]',
-  '[data-testid="content-header-media"]',
-  '[data-testid="header-media"]',
-  '[data-testid="media-section"]',
-  '[class*="HeaderMedia"]',
-  '[class*="headerMedia"]',
-  '[class*="CoverMedia"]',
-  '[class*="coverMedia"]',
-  '[class*="ArticleHeader"]',
-  '[class*="articleHeader"]',
-  // fallback: a label whose text mentions "Image" or "Video"
-  'label',
-];
-
-function tryInjectIntoEl(el: HTMLInputElement, url: string, label: string): boolean {
-  if (!el) return false;
-  setReactInputValue(el, url);
-  console.info('[KrogerVideoWidget] ✅ Injected into', label, el);
-  return true;
-}
-
-function tryKnownSelectors(topDoc: Document, url: string): boolean {
-  for (const sel of KNOWN_SELECTORS) {
+function findAndFillUrlInput(topDoc: Document, url: string): boolean {
+  for (const sel of URL_INPUT_SELECTORS) {
     const el = topDoc.querySelector<HTMLInputElement>(sel);
-    if (el) return tryInjectIntoEl(el, url, sel);
+    if (el) {
+      setReactInputValue(el, url);
+      console.info('[KrogerVideoWidget] ✅ Filled URL input via selector:', sel, el);
+      return true;
+    }
   }
   return false;
 }
 
-function logAllInputs(topDoc: Document): void {
-  const all = Array.from(topDoc.querySelectorAll<HTMLInputElement>('input'));
-  console.info(`[KrogerVideoWidget] ALL inputs in parent frame (${all.length}):`);
-  all.forEach((el, i) => {
-    console.info(`  [${i}]`, {
-      id:          el.id          || '—',
-      type:        el.type        || '—',
-      name:        el.name        || '—',
-      placeholder: el.placeholder || '—',
-      'data-testid': el.dataset['testid'] || '—',
-      'aria-label':  el.getAttribute('aria-label') || '—',
-      value:       el.value || '(empty)',
-      visible:     el.getBoundingClientRect().width > 0,
-    });
-  });
+// Find a visible clickable element whose text matches the given string.
+function findByText(topDoc: Document, query: string, tag = 'button, [role="button"], [role="menuitem"], [role="option"], li, a, span'): HTMLElement | null {
+  const q = query.toLowerCase();
+  const candidates = Array.from(topDoc.querySelectorAll<HTMLElement>(tag));
+  // exact match first
+  const exact = candidates.find(el => el.textContent?.trim().toLowerCase() === q);
+  if (exact) return exact;
+  // partial match
+  return candidates.find(el => {
+    const t = el.textContent?.trim().toLowerCase() || '';
+    return t.includes(q) && t.length < 40;
+  }) || null;
 }
 
-// Try to find and click the Article Image/Video container so the URL input appears.
-function tryClickMediaSection(topDoc: Document): void {
-  // First try explicit selectors
-  for (const sel of MEDIA_SECTION_SELECTORS) {
-    if (sel === 'label') continue;
-    const el = topDoc.querySelector<HTMLElement>(sel);
-    if (el) {
-      console.info('[KrogerVideoWidget] Clicking media section:', sel);
-      el.click();
-      return;
-    }
-  }
+// ── Multi-step click chain ─────────────────────────────────────────────────
 
-  // Fallback: find a label whose text contains "Image" or "Video"
-  const labels = Array.from(topDoc.querySelectorAll<HTMLElement>('label, [class*="label" i], h3, h4, span'));
-  const mediaLabel = labels.find(el => {
-    const t = el.textContent?.toLowerCase() || '';
-    return (t.includes('image') || t.includes('video')) && t.length < 60;
-  });
-  if (mediaLabel) {
-    console.info('[KrogerVideoWidget] Clicking label-like element:', mediaLabel.textContent?.trim());
-    mediaLabel.click();
-    // also try clicking its parent/sibling container
-    (mediaLabel.parentElement as HTMLElement)?.click();
+function stepClickChooseFrom(topDoc: Document): void {
+  const btn = findByText(topDoc, 'choose from') || findByText(topDoc, 'choose');
+  if (btn) {
+    console.info('[KrogerVideoWidget] Step 2: clicking "Choose from" button →', btn.textContent?.trim());
+    btn.click();
   } else {
-    console.warn('[KrogerVideoWidget] Could not find Article Image/Video section to click.');
-    logAllInputs(topDoc);
+    console.warn('[KrogerVideoWidget] Step 2: "Choose from" button not found. Logging all visible buttons:');
+    Array.from(topDoc.querySelectorAll<HTMLElement>('button, [role="button"]'))
+      .filter(el => el.getBoundingClientRect().width > 0)
+      .forEach((el, i) => console.info(`  btn[${i}]:`, el.textContent?.trim(), el.dataset));
   }
 }
 
-// Watch the parent frame for new inputs appearing after the media section is clicked.
+function stepClickUrlOption(topDoc: Document): void {
+  // Look for a "URL" / "By URL" / "From URL" menu item
+  const opt =
+    findByText(topDoc, 'url',       '[role="menuitem"], [role="option"], li, button, a') ||
+    findByText(topDoc, 'by url',    '[role="menuitem"], [role="option"], li, button, a') ||
+    findByText(topDoc, 'from url',  '[role="menuitem"], [role="option"], li, button, a') ||
+    findByText(topDoc, 'link',      '[role="menuitem"], [role="option"], li, button, a') ||
+    findByText(topDoc, 'external',  '[role="menuitem"], [role="option"], li, button, a');
+
+  if (opt) {
+    console.info('[KrogerVideoWidget] Step 3: clicking URL option →', opt.textContent?.trim());
+    opt.click();
+  } else {
+    console.warn('[KrogerVideoWidget] Step 3: URL option not found. Logging all visible menu items:');
+    Array.from(topDoc.querySelectorAll<HTMLElement>('[role="menuitem"], [role="option"], li'))
+      .filter(el => el.getBoundingClientRect().width > 0)
+      .forEach((el, i) => console.info(`  item[${i}]:`, el.textContent?.trim()));
+  }
+}
+
+function stepClickArticleImageSection(topDoc: Document): void {
+  // Find the Article Image/Video container or its label
+  const candidates = [
+    topDoc.querySelector<HTMLElement>('[data-testid="article-header-media"]'),
+    topDoc.querySelector<HTMLElement>('[data-testid="cover-media"]'),
+    topDoc.querySelector<HTMLElement>('[data-testid="content-header-media"]'),
+    topDoc.querySelector<HTMLElement>('[class*="HeaderMedia"]'),
+    topDoc.querySelector<HTMLElement>('[class*="headerMedia"]'),
+    topDoc.querySelector<HTMLElement>('[class*="CoverMedia"]'),
+    findByText(topDoc, 'article image/video', 'label, h3, h4, p, span, div'),
+    findByText(topDoc, 'image/video',         'label, h3, h4, p, span, div'),
+  ].filter(Boolean) as HTMLElement[];
+
+  if (candidates.length > 0) {
+    const el = candidates[0];
+    console.info('[KrogerVideoWidget] Step 1: clicking Article Image/Video section →', el.textContent?.trim()?.slice(0, 60));
+    el.click();
+    (el.parentElement as HTMLElement)?.click();
+  } else {
+    console.warn('[KrogerVideoWidget] Step 1: Article Image/Video section not found. Will rely on MutationObserver.');
+  }
+}
+
+// ── MutationObserver + polling ─────────────────────────────────────────────
+
 let activeObserver: MutationObserver | null = null;
 
-function watchForMediaInput(url: string): void {
+function startWatching(thumbUrl: string, topDoc: Document): void {
   if (activeObserver) { activeObserver.disconnect(); activeObserver = null; }
 
-  let topDoc: Document;
-  try { topDoc = (window.top as Window).document; } catch { return; }
+  const done = (): void => {
+    if (activeObserver) { activeObserver.disconnect(); activeObserver = null; }
+  };
 
+  const tryFill = (): boolean => {
+    if (findAndFillUrlInput(topDoc, thumbUrl)) { done(); return true; }
+    return false;
+  };
+
+  // Disconnect after 20 seconds regardless
   const timeout = setTimeout(() => {
-    if (activeObserver) {
-      activeObserver.disconnect();
-      activeObserver = null;
-      console.warn('[KrogerVideoWidget] Timed out waiting for Article Image/Video input. Logging all inputs:');
-      logAllInputs(topDoc);
-    }
-  }, 15000);
+    done();
+    console.warn('[KrogerVideoWidget] Gave up waiting for URL input after 20s. Log all inputs:');
+    Array.from(topDoc.querySelectorAll<HTMLInputElement>('input')).forEach((el, i) => {
+      console.info(`  input[${i}]:`, { id: el.id, type: el.type, name: el.name, placeholder: el.placeholder, 'data-testid': el.dataset['testid'], 'aria-label': el.getAttribute('aria-label') });
+    });
+  }, 20000);
 
   activeObserver = new MutationObserver(() => {
-    if (tryKnownSelectors(topDoc, url)) {
-      clearTimeout(timeout);
-      if (activeObserver) { activeObserver.disconnect(); activeObserver = null; }
-    }
+    if (tryFill()) clearTimeout(timeout);
   });
-
   activeObserver.observe(topDoc.body, { childList: true, subtree: true, attributes: true });
-  console.info('[KrogerVideoWidget] Watching for Article Image/Video input to appear...');
+  console.info('[KrogerVideoWidget] Watching for URL input to appear...');
 }
 
 // ── Public entry point ─────────────────────────────────────────────────────
@@ -212,27 +213,34 @@ export async function injectArticleCoverImage(videoUrl: string, fallbackThumbnai
   if (!videoUrl && !fallbackThumbnailUrl) return;
 
   const iframelyThumb = await fetchIframelyThumbnail(videoUrl);
-  const thumbToUse = iframelyThumb || fallbackThumbnailUrl;
-  if (!thumbToUse) return;
+  const thumbUrl = iframelyThumb || fallbackThumbnailUrl;
+  if (!thumbUrl) return;
 
   let topDoc: Document;
   try { topDoc = (window.top as Window).document; } catch { return; }
 
-  // Step 1: try known selectors immediately (in case input is already visible)
-  if (tryKnownSelectors(topDoc, thumbToUse)) return;
+  // Step 0: try immediately in case the panel is already open
+  if (findAndFillUrlInput(topDoc, thumbUrl)) return;
 
-  // Step 2: set up MutationObserver BEFORE clicking, so we don't miss it
-  watchForMediaInput(thumbToUse);
+  // Start watching for the URL input throughout the whole flow
+  startWatching(thumbUrl, topDoc);
 
-  // Step 3: click the Article Image/Video section to reveal its URL input
-  tryClickMediaSection(topDoc);
+  // Step 1 (0ms): click the Article Image/Video section → reveals drag-drop panel
+  stepClickArticleImageSection(topDoc);
 
-  // Step 4: also poll every 600ms for 10s as a belt-and-suspenders fallback
+  // Step 2 (600ms): click "Choose from ∨" → reveals dropdown
+  setTimeout(() => stepClickChooseFrom(topDoc), 600);
+
+  // Step 3 (1200ms): click "URL" option in dropdown → reveals URL input
+  setTimeout(() => stepClickUrlOption(topDoc), 1200);
+
+  // Step 3b (1800ms): retry URL option click (dropdown may have animated in)
+  setTimeout(() => stepClickUrlOption(topDoc), 1800);
+
+  // Polling fallback every 700ms for 15s — catches the input whenever it appears
   let polls = 0;
   const poll = setInterval(() => {
     polls++;
-    if (tryKnownSelectors(topDoc, thumbToUse) || polls >= 17) {
-      clearInterval(poll);
-    }
-  }, 600);
+    if (findAndFillUrlInput(topDoc, thumbUrl) || polls >= 22) clearInterval(poll);
+  }, 700);
 }
