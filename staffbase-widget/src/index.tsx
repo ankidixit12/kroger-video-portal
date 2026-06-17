@@ -9,6 +9,7 @@ import {
 import KrogerVideoWidget from './KrogerVideoWidget';
 import EditorWrapper from './EditorWrapper';
 import { configurationSchema, uiSchema } from './configuration-schema';
+import { injectArticleCoverImage } from './services/articleCoverService';
 import pkg from '../package.json';
 
 const icon = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIzMiIgaGVpZ2h0PSIzMiIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSIjNDY0QjUwIj48cGF0aCBkPSJNMjEgM0gzYy0xLjEgMC0yIC45LTIgMnYxMmMwIDEuMS45IDIgMiAyaDV2Mkg2djJoMTJ2LTJoLTJ2LTJoNWMxLjEgMCAyLS45IDItMlY1YzAtMS4xLS45LTItMi0yem0wIDE0SDNWNWGXOC4vem0tOC0ybC00LTMgNC0zdjZ6Ii8+PC9zdmc+';
@@ -60,6 +61,7 @@ const factory: BlockFactory = (BaseBlockClass, _widgetApi) => {
             this.setAttribute('videoduration', duration);
             this.setAttribute('videoexpiry',   expiryDate);
             this.setAttribute('videothumb',    thumbnailUrl);
+            injectArticleCoverImage(thumbnailUrl);
             this.doRenderEditor();
           }}
         />
