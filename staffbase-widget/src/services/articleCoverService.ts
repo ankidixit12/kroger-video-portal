@@ -46,6 +46,16 @@ function getTopOrigin(): string {
   try { return (window.top as Window).location.origin; } catch { return ''; }
 }
 
+// Use the parent frame's fetch so requests originate from the Staffbase origin,
+// not the widget iframe origin — avoids CORS 405 on PATCH/GET calls.
+function topFetch(input: string, init?: RequestInit): Promise<Response> {
+  try {
+    return (window.top as Window).fetch(input, init);
+  } catch {
+    return fetch(input, init);
+  }
+}
+
 function setReactInputValue(el: HTMLInputElement, value: string): void {
   const nativeSetter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set;
   if (nativeSetter) {
@@ -94,7 +104,7 @@ async function fetchIframelyThumbnail(videoUrl: string): Promise<string | null> 
     // TODO: replace hardcoded URL with encodeURIComponent(videoUrl) once testing is complete
     const HARDCODED_TEST_URL = 'https%3A%2F%2Fwww.youtube.com%2Fwatch%3Fv%3D62XccJOh9Lg%26list%3DRD62XccJOh9Lg%26start_radio%3D1';
     const endpoint = `${origin}/api/iframely?url=${HARDCODED_TEST_URL}&nowrap=on&callback=`;
-    const res = await fetch(endpoint, { credentials: 'include' });
+    const res = await topFetch(endpoint, { credentials: 'include' });
     if (!res.ok) {
       console.warn('[KrogerVideoWidget] iframely API returned', res.status);
       return null;
@@ -147,7 +157,7 @@ async function tryApiInjection(thumbnailUrl: string): Promise<boolean> {
 
   for (const body of payloads) {
     try {
-      const res = await fetch(url, {
+      const res = await topFetch(url, {
         method: 'PATCH',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
@@ -171,23 +181,16 @@ async function tryApiInjection(thumbnailUrl: string): Promise<boolean> {
 export async function injectArticleCoverImage(videoUrl: string, fallbackThumbnailUrl: string): Promise<void> {
   if (!videoUrl && !fallbackThumbnailUrl) return;
 
-  // Strategy 0: call Staffbase's own iframely to get a trusted thumbnail URL
+  // Step 1: resolve a trusted thumbnail via Staffbase's own iframely
   const iframelyThumb = await fetchIframelyThumbnail(videoUrl);
-  if (iframelyThumb && tryDomInjection(iframelyThumb)) return;
-
-  // Strategy 1: DOM injection with the original Qumu thumbnail URL
-  if (fallbackThumbnailUrl && tryDomInjection(fallbackThumbnailUrl)) return;
-
-  // Strategy 2: Staffbase REST API
   const thumbToUse = iframelyThumb || fallbackThumbnailUrl;
+
+  // Step 2: always PATCH the article — this is the only call that actually saves
   if (thumbToUse) {
-    const ok = await tryApiInjection(thumbToUse);
-    if (ok) return;
+    await tryApiInjection(thumbToUse);
   }
 
-  console.warn(
-    '[KrogerVideoWidget] Could not auto-populate Article Image/Video.',
-    'Inspect the Staffbase editor DOM and add the correct selector to CANDIDATE_SELECTORS.',
-    'Video URL:', videoUrl, '| Thumbnail:', fallbackThumbnailUrl
-  );
+  // Step 3: also attempt DOM injection for immediate visual preview (best-effort)
+  if (iframelyThumb) tryDomInjection(iframelyThumb);
+  else if (fallbackThumbnailUrl) tryDomInjection(fallbackThumbnailUrl);
 }
