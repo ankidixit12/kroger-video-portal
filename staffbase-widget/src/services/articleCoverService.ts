@@ -119,19 +119,24 @@ function hookTopFetch(thumbUrl: string): void {
 
         if (isArticleSave) {
           console.info('[KrogerVideoWidget] Fetch contents:', JSON.stringify(body.contents ?? body));
-          const target = body.contents ?? body;
-          target.thumbnail   = { url: thumbUrl, type: 'image/jpeg' };
-          target.headerImage = { url: thumbUrl };
-          target.coverImage  = { url: thumbUrl };
-          target.media       = { url: thumbUrl, type: 'image' };
-          body.thumbnail     = { url: thumbUrl, type: 'image/jpeg' };
-          body.headerImage   = { url: thumbUrl };
-          const patched = { ...init, body: JSON.stringify(body) };
-          console.info('[KrogerVideoWidget] ✅ Injected thumbnail into contents:', thumbUrl);
-          clearTimeout(restoreTimer);
-          (topWin as any).fetch = originalFetch;
-          console.info('[KrogerVideoWidget] Fetch hook removed after injection.');
-          return originalFetch(input, patched);
+          const contentsObj = body.contents ?? body;
+          const hasTitle = body.title != null || contentsObj.title != null;
+          if (!hasTitle) {
+            console.info('[KrogerVideoWidget] Skipping fetch injection — no title in payload (partial/autosave).');
+          } else {
+            contentsObj.thumbnail   = { url: thumbUrl, type: 'image/jpeg' };
+            contentsObj.headerImage = { url: thumbUrl };
+            contentsObj.coverImage  = { url: thumbUrl };
+            contentsObj.media       = { url: thumbUrl, type: 'image' };
+            body.thumbnail          = { url: thumbUrl, type: 'image/jpeg' };
+            body.headerImage        = { url: thumbUrl };
+            const patched = { ...init, body: JSON.stringify(body) };
+            console.info('[KrogerVideoWidget] ✅ Injected thumbnail into contents:', thumbUrl);
+            clearTimeout(restoreTimer);
+            (topWin as any).fetch = originalFetch;
+            console.info('[KrogerVideoWidget] Fetch hook removed after injection.');
+            return originalFetch(input, patched);
+          }
         }
       } catch (e) {
         console.warn('[KrogerVideoWidget] Could not parse body:', e);
@@ -172,20 +177,24 @@ function hookTopFetch(thumbUrl: string): void {
               _url.includes('/api/news/') ||
               _url.includes('/api/posts/');
             if (isArticleSave) {
-              // Log the full contents structure so we can see the correct field name
               console.info('[KrogerVideoWidget] XHR contents:', JSON.stringify(parsed.contents ?? parsed));
 
-              // Inject at top level and inside contents object
-              const target = parsed.contents ?? parsed;
-              target.thumbnail   = { url: thumbUrl, type: 'image/jpeg' };
-              target.headerImage = { url: thumbUrl };
-              target.coverImage  = { url: thumbUrl };
-              target.media       = { url: thumbUrl, type: 'image' };
-              // Also try at top level regardless
-              parsed.thumbnail   = { url: thumbUrl, type: 'image/jpeg' };
-              parsed.headerImage = { url: thumbUrl };
-              console.info('[KrogerVideoWidget] ✅ XHR thumbnail injected inside contents:', thumbUrl);
-              return originalSend(JSON.stringify(parsed));
+              // Only inject on a FULL save that includes title.
+              // Partial/autosave payloads omit title and Staffbase rejects them with 400.
+              const contentsObj = parsed.contents ?? parsed;
+              const hasTitle = parsed.title != null || contentsObj.title != null;
+              if (!hasTitle) {
+                console.info('[KrogerVideoWidget] Skipping injection — no title in payload (partial/autosave), letting it pass through.');
+              } else {
+                contentsObj.thumbnail   = { url: thumbUrl, type: 'image/jpeg' };
+                contentsObj.headerImage = { url: thumbUrl };
+                contentsObj.coverImage  = { url: thumbUrl };
+                contentsObj.media       = { url: thumbUrl, type: 'image' };
+                parsed.thumbnail        = { url: thumbUrl, type: 'image/jpeg' };
+                parsed.headerImage      = { url: thumbUrl };
+                console.info('[KrogerVideoWidget] ✅ XHR thumbnail injected inside contents:', thumbUrl);
+                return originalSend(JSON.stringify(parsed));
+              }
             }
           } catch {}
         }
