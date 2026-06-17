@@ -21,6 +21,55 @@ function getTopOrigin(): string {
 
 const HARDCODED_YOUTUBE_URL = 'https://www.youtube.com/watch?v=62XccJOh9Lg&list=RD62XccJOh9Lg&start_radio=1';
 
+function hasTitleInPayload(payload: any): boolean {
+  if (!payload || typeof payload !== 'object') return false;
+  if (payload.title != null) return true;
+
+  const contents = payload.contents;
+  if (!contents || typeof contents !== 'object') return false;
+  if (contents.title != null) return true;
+
+  return Object.values(contents).some(
+    (localized: any) => localized && typeof localized === 'object' && localized.title != null
+  );
+}
+
+function injectThumbnailIntoPayload(payload: any, thumbUrl: string): void {
+  if (!payload || typeof payload !== 'object') return;
+
+  const imageWithType = { url: thumbUrl, type: 'image/jpeg' };
+  const imageRef = { url: thumbUrl };
+
+  // Keep legacy fields for payload variants that still honor these keys.
+  payload.thumbnail = imageWithType;
+  payload.headerImage = imageRef;
+  payload.coverImage = imageRef;
+  payload.media = { url: thumbUrl, type: 'image' };
+
+  const contents = payload.contents;
+  if (contents && typeof contents === 'object') {
+    const keys = Object.keys(contents);
+    const localeLikeKeys = keys.filter(
+      (key) => contents[key] && typeof contents[key] === 'object' && key.includes('_')
+    );
+
+    if (localeLikeKeys.length > 0) {
+      localeLikeKeys.forEach((localeKey) => {
+        contents[localeKey].image = imageRef;
+        contents[localeKey].feedImage = imageRef;
+        contents[localeKey].thumbnail = imageWithType;
+      });
+    } else {
+      contents.image = imageRef;
+      contents.feedImage = imageRef;
+      contents.thumbnail = imageWithType;
+      contents.headerImage = imageRef;
+      contents.coverImage = imageRef;
+      contents.media = { url: thumbUrl, type: 'image' };
+    }
+  }
+}
+
 // ── Step 1: iframely call ──────────────────────────────────────────────────
 
 async function fetchIframelyThumbnail(): Promise<string | null> {
@@ -119,17 +168,11 @@ function hookTopFetch(thumbUrl: string): void {
 
         if (isArticleSave) {
           console.info('[KrogerVideoWidget] Fetch contents:', JSON.stringify(body.contents ?? body));
-          const contentsObj = body.contents ?? body;
-          const hasTitle = body.title != null || contentsObj.title != null;
+          const hasTitle = hasTitleInPayload(body);
           if (!hasTitle) {
             console.info('[KrogerVideoWidget] Skipping fetch injection — no title in payload (partial/autosave).');
           } else {
-            contentsObj.thumbnail   = { url: thumbUrl, type: 'image/jpeg' };
-            contentsObj.headerImage = { url: thumbUrl };
-            contentsObj.coverImage  = { url: thumbUrl };
-            contentsObj.media       = { url: thumbUrl, type: 'image' };
-            body.thumbnail          = { url: thumbUrl, type: 'image/jpeg' };
-            body.headerImage        = { url: thumbUrl };
+            injectThumbnailIntoPayload(body, thumbUrl);
             const patched = { ...init, body: JSON.stringify(body) };
             console.info('[KrogerVideoWidget] ✅ Injected thumbnail into contents:', thumbUrl);
             clearTimeout(restoreTimer);
@@ -181,17 +224,11 @@ function hookTopFetch(thumbUrl: string): void {
 
               // Only inject on a FULL save that includes title.
               // Partial/autosave payloads omit title and Staffbase rejects them with 400.
-              const contentsObj = parsed.contents ?? parsed;
-              const hasTitle = parsed.title != null || contentsObj.title != null;
+              const hasTitle = hasTitleInPayload(parsed);
               if (!hasTitle) {
                 console.info('[KrogerVideoWidget] Skipping injection — no title in payload (partial/autosave), letting it pass through.');
               } else {
-                contentsObj.thumbnail   = { url: thumbUrl, type: 'image/jpeg' };
-                contentsObj.headerImage = { url: thumbUrl };
-                contentsObj.coverImage  = { url: thumbUrl };
-                contentsObj.media       = { url: thumbUrl, type: 'image' };
-                parsed.thumbnail        = { url: thumbUrl, type: 'image/jpeg' };
-                parsed.headerImage      = { url: thumbUrl };
+                injectThumbnailIntoPayload(parsed, thumbUrl);
                 console.info('[KrogerVideoWidget] ✅ XHR thumbnail injected inside contents:', thumbUrl);
                 return originalSend(JSON.stringify(parsed));
               }
