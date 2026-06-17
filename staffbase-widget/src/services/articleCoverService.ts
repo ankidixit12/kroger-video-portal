@@ -2,52 +2,17 @@
  * Injects a video thumbnail into Staffbase's Article Image/Video field
  * automatically when a video is selected in the widget editor.
  *
- * Strategy 0 — Staffbase iframely (primary):
- *   Calls Staffbase's own internal iframely endpoint with the video URL.
- *   Iframely resolves the trusted thumbnail (YouTube/Qumu CDN) that Staffbase
- *   already accepts, then injects that URL via DOM.
+ * Strategy 1 — DOM injection (primary):
+ *   Tries known Staffbase input selectors, then falls back to scanning all
+ *   visible text inputs in the parent frame. Logs every candidate found so
+ *   the correct selector can be identified in DevTools Console.
  *
- * Strategy 1 — DOM injection with original thumbnail:
- *   Tries known Staffbase input selectors against the parent frame DOM.
- *   Add the correct selector to CANDIDATE_SELECTORS once discovered via DevTools.
- *
- * Strategy 2 — Staffbase REST API:
- *   PATCHes the article via /api/v3/contents/{id} using the existing browser session.
+ * Strategy 0 — Staffbase iframely (thumbnail source):
+ *   Calls Staffbase's own internal iframely endpoint to resolve a trusted
+ *   thumbnail URL (YouTube CDN) that Staffbase accepts in the image field.
  */
 
-const CANDIDATE_SELECTORS = [
-  '[data-testid="content-header-media-url-input"]',
-  '[data-testid="article-header-image-url"]',
-  '[data-testid="cover-image-url-input"]',
-  '[data-testid="media-url-input"]',
-  '[data-testid="thumbnail-url-input"]',
-  'input[name="headerImageUrl"]',
-  'input[name="coverImageUrl"]',
-  'input[name="thumbnailUrl"]',
-  'input[name="thumbnail"]',
-  'input[name="headerImage"]',
-  'input[name="coverImage"]',
-  'input[placeholder*="image" i]',
-  'input[placeholder*="thumbnail" i]',
-  'input[placeholder*="video" i]',
-];
-
-const CONTENT_ID_PATTERNS = [
-  /\/post\/([a-f0-9]{20,}(?:-[a-f0-9]+)*)\b/i,
-  /\/posts\/([a-f0-9]{20,}(?:-[a-f0-9]+)*)\b/i,
-  /\/content\/([a-f0-9]{20,}(?:-[a-f0-9]+)*)\b/i,
-  /\/([a-f0-9]{20,}(?:-[a-f0-9]+)*)\/edit\b/i,
-  /\/([a-f0-9]{20,}(?:-[a-f0-9]+)*)\/?\s*$/i,
-];
-
-// ── Helpers ────────────────────────────────────────────────────────────────
-
-function getTopOrigin(): string {
-  try { return (window.top as Window).location.origin; } catch { return ''; }
-}
-
-// Use the parent frame's fetch so requests originate from the Staffbase origin,
-// not the widget iframe origin — avoids CORS 405 on PATCH/GET calls.
+// Use the parent frame's fetch so requests originate from the Staffbase origin.
 function topFetch(input: string, init?: RequestInit): Promise<Response> {
   try {
     return (window.top as Window).fetch(input, init);
@@ -56,48 +21,8 @@ function topFetch(input: string, init?: RequestInit): Promise<Response> {
   }
 }
 
-// Staffbase SPA sends a CSRF token with mutating requests.
-// Read it from the parent frame's cookies and return the matching header map.
-function getCsrfHeaders(): Record<string, string> {
-  const headers: Record<string, string> = {
-    'X-Requested-With': 'XMLHttpRequest',
-    'Accept': 'application/json',
-  };
-  try {
-    const cookie = (window.top as Window).document.cookie;
-    console.info('[KrogerVideoWidget] cookies available:', cookie ? 'yes' : 'none');
-
-    // Try common CSRF cookie names used by Staffbase / Angular / Rails SPAs
-    const patterns: [RegExp, string][] = [
-      [/(?:^|;\s*)XSRF-TOKEN=([^;]+)/i,         'X-XSRF-TOKEN'],
-      [/(?:^|;\s*)csrf-token=([^;]+)/i,          'X-CSRF-Token'],
-      [/(?:^|;\s*)csrfToken=([^;]+)/i,           'X-CSRF-Token'],
-      [/(?:^|;\s*)staffbase[-_]csrf=([^;]+)/i,   'X-CSRF-Token'],
-      [/(?:^|;\s*)_csrf=([^;]+)/i,               'X-CSRF-Token'],
-    ];
-    for (const [re, headerName] of patterns) {
-      const m = cookie.match(re);
-      if (m) {
-        headers[headerName] = decodeURIComponent(m[1]);
-        console.info('[KrogerVideoWidget] CSRF token found via cookie pattern, header:', headerName);
-        break;
-      }
-    }
-
-    // Also check common meta tag locations
-    if (!headers['X-CSRF-Token'] && !headers['X-XSRF-TOKEN']) {
-      const meta = (window.top as Window).document.querySelector<HTMLMetaElement>(
-        'meta[name="csrf-token"], meta[name="CSRF-Token"]'
-      );
-      if (meta?.content) {
-        headers['X-CSRF-Token'] = meta.content;
-        console.info('[KrogerVideoWidget] CSRF token found via meta tag');
-      }
-    }
-  } catch (e) {
-    console.warn('[KrogerVideoWidget] Could not read CSRF token:', e);
-  }
-  return headers;
+function getTopOrigin(): string {
+  try { return (window.top as Window).location.origin; } catch { return ''; }
 }
 
 function setReactInputValue(el: HTMLInputElement, value: string): void {
@@ -109,41 +34,16 @@ function setReactInputValue(el: HTMLInputElement, value: string): void {
   }
   el.dispatchEvent(new Event('input',  { bubbles: true }));
   el.dispatchEvent(new Event('change', { bubbles: true }));
+  el.dispatchEvent(new Event('blur',   { bubbles: true }));
 }
 
-function tryDomInjection(url: string): boolean {
-  try {
-    const topDoc = (window.top as Window).document;
-    for (const selector of CANDIDATE_SELECTORS) {
-      const el = topDoc.querySelector<HTMLInputElement>(selector);
-      if (el) {
-        setReactInputValue(el, url);
-        console.info('[KrogerVideoWidget] Article cover injected via DOM selector:', selector);
-        return true;
-      }
-    }
-  } catch { /* cross-origin guard */ }
-  return false;
-}
-
-function extractContentId(): string | null {
-  try {
-    const href = (window.top as Window).location.href;
-    for (const pattern of CONTENT_ID_PATTERNS) {
-      const match = href.match(pattern);
-      if (match?.[1]) return match[1];
-    }
-  } catch { /* cross-origin */ }
-  return null;
-}
-
-// ── Strategy 0: Staffbase iframely ─────────────────────────────────────────
+// ── Strategy 0: Staffbase iframely thumbnail resolver ──────────────────────
 
 async function fetchIframelyThumbnail(videoUrl: string): Promise<string | null> {
   if (!videoUrl) return null;
   try {
-    const origin  = getTopOrigin();
-    if (!origin)  return null;
+    const origin = getTopOrigin();
+    if (!origin) return null;
 
     // TODO: replace hardcoded URL with encodeURIComponent(videoUrl) once testing is complete
     const HARDCODED_TEST_URL = 'https%3A%2F%2Fwww.youtube.com%2Fwatch%3Fv%3D62XccJOh9Lg%26list%3DRD62XccJOh9Lg%26start_radio%3D1';
@@ -159,17 +59,15 @@ async function fetchIframelyThumbnail(videoUrl: string): Promise<string | null> 
     try {
       data = JSON.parse(text);
     } catch {
-      // iframely sometimes wraps in JSONP — strip any leading/trailing callback wrapper
       const stripped = text.replace(/^\s*\w+\s*\(/, '').replace(/\)\s*;?\s*$/, '');
       data = JSON.parse(stripped);
     }
 
-    // iframely response shapes — try most specific first
     const thumb =
-      data?.links?.thumbnail?.[0]?.href   ||   // standard iframely links
-      data?.links?.icon?.[0]?.href         ||
-      data?.meta?.thumbnail_url            ||   // oEmbed-style
-      data?.thumbnail_url                  ||
+      data?.links?.thumbnail?.[0]?.href ||
+      data?.links?.icon?.[0]?.href      ||
+      data?.meta?.thumbnail_url         ||
+      data?.thumbnail_url               ||
       null;
 
     if (thumb) console.info('[KrogerVideoWidget] iframely resolved thumbnail:', thumb);
@@ -180,44 +78,103 @@ async function fetchIframelyThumbnail(videoUrl: string): Promise<string | null> 
   }
 }
 
-// ── Strategy 2: Staffbase articles PATCH ──────────────────────────────────
+// ── Strategy 1: DOM injection ──────────────────────────────────────────────
 
-async function tryApiInjection(thumbnailUrl: string): Promise<boolean> {
-  const contentId = extractContentId();
-  if (!contentId) {
-    console.warn('[KrogerVideoWidget] Could not parse content ID from URL:', getTopOrigin());
-    return false;
-  }
-  const url = `${getTopOrigin()}/api/articles/${contentId}`;
+const CANDIDATE_SELECTORS = [
+  // Known Staffbase data-testid patterns
+  '[data-testid="content-header-media-url-input"]',
+  '[data-testid="article-header-image-url"]',
+  '[data-testid="cover-image-url-input"]',
+  '[data-testid="media-url-input"]',
+  '[data-testid="thumbnail-url-input"]',
+  '[data-testid="header-image-url"]',
+  '[data-testid="image-url"]',
+  '[data-testid="headerImage"]',
+  // name-based selectors
+  'input[name="headerImageUrl"]',
+  'input[name="coverImageUrl"]',
+  'input[name="thumbnailUrl"]',
+  'input[name="thumbnail"]',
+  'input[name="headerImage"]',
+  'input[name="coverImage"]',
+  'input[name="imageUrl"]',
+  // placeholder-based (case-insensitive)
+  'input[placeholder*="image" i]',
+  'input[placeholder*="thumbnail" i]',
+  'input[placeholder*="video" i]',
+  'input[placeholder*="url" i]',
+  // aria-label based
+  '[aria-label*="image" i]',
+  '[aria-label*="thumbnail" i]',
+  '[aria-label*="cover" i]',
+  '[aria-label*="header" i]',
+];
 
-  // Try payload shapes in order — update once the correct one is confirmed
-  const payloads = [
-    { thumbnail: { url: thumbnailUrl, type: 'image/jpeg' } },
-    { thumbnail: { url: thumbnailUrl } },
-    { thumbnail: thumbnailUrl },
-    { image:     { url: thumbnailUrl } },
-    { headerImage: { url: thumbnailUrl } },
-  ];
+function tryDomInjection(url: string): boolean {
+  try {
+    const topDoc = (window.top as Window).document;
 
-  for (const body of payloads) {
-    try {
-      const res = await topFetch(url, {
-        method: 'PATCH',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json', ...getCsrfHeaders() },
-        body: JSON.stringify(body),
-      });
-      console.info(`[KrogerVideoWidget] PATCH ${url} with`, body, '→', res.status);
-      if (res.ok) {
-        console.info('[KrogerVideoWidget] Article cover set. Working payload:', JSON.stringify(body));
+    // 1. Try all known selectors first
+    for (const selector of CANDIDATE_SELECTORS) {
+      const el = topDoc.querySelector<HTMLInputElement>(selector);
+      if (el) {
+        setReactInputValue(el, url);
+        console.info('[KrogerVideoWidget] ✅ Article cover injected via selector:', selector);
         return true;
       }
-    } catch (e) {
-      console.warn('[KrogerVideoWidget] PATCH failed:', e);
     }
+
+    // 2. Fallback: scan ALL visible text inputs and log them so we can find the right one
+    const allInputs = Array.from(topDoc.querySelectorAll<HTMLInputElement>('input[type="text"], input:not([type])'));
+    const visible = allInputs.filter(el => {
+      const r = el.getBoundingClientRect();
+      return r.width > 0 && r.height > 0;
+    });
+
+    console.info('[KrogerVideoWidget] No known selector matched. Scanning visible inputs:', visible.length);
+    visible.forEach((el, i) => {
+      console.info(`[KrogerVideoWidget] Input[${i}]`, {
+        id:          el.id          || '(none)',
+        name:        el.name        || '(none)',
+        placeholder: el.placeholder || '(none)',
+        'data-testid': el.dataset['testid'] || '(none)',
+        'aria-label':  el.getAttribute('aria-label') || '(none)',
+        value:       el.value       || '(empty)',
+        className:   el.className   || '(none)',
+      });
+    });
+
+    // 3. Try to find an input that looks like a URL field (empty or contains http)
+    const urlLike = visible.find(el =>
+      el.placeholder?.toLowerCase().includes('http') ||
+      el.value?.startsWith('http') ||
+      el.value === '' && (
+        el.placeholder?.toLowerCase().includes('url') ||
+        el.getAttribute('aria-label')?.toLowerCase().includes('url')
+      )
+    );
+    if (urlLike) {
+      setReactInputValue(urlLike, url);
+      console.info('[KrogerVideoWidget] ✅ Article cover injected via URL-like input heuristic', {
+        id: urlLike.id, name: urlLike.name, placeholder: urlLike.placeholder,
+        'data-testid': urlLike.dataset['testid'],
+      });
+      return true;
+    }
+
+    console.warn('[KrogerVideoWidget] ❌ Could not find Article Image/Video input. Check the Input[N] logs above in DevTools to find the correct selector, then add it to CANDIDATE_SELECTORS.');
+  } catch (e) {
+    console.warn('[KrogerVideoWidget] DOM injection error:', e);
   }
-  console.warn('[KrogerVideoWidget] All PATCH payloads failed. Share the console output to identify the correct field name.');
   return false;
+}
+
+// Retry DOM injection up to 3 times with 500ms delay — the Staffbase editor
+// panel may not have rendered yet when a video is first selected.
+function tryDomInjectionWithRetry(url: string, attemptsLeft = 3): void {
+  if (tryDomInjection(url)) return;
+  if (attemptsLeft <= 0) return;
+  setTimeout(() => tryDomInjectionWithRetry(url, attemptsLeft - 1), 500);
 }
 
 // ── Public entry point ─────────────────────────────────────────────────────
@@ -229,12 +186,8 @@ export async function injectArticleCoverImage(videoUrl: string, fallbackThumbnai
   const iframelyThumb = await fetchIframelyThumbnail(videoUrl);
   const thumbToUse = iframelyThumb || fallbackThumbnailUrl;
 
-  // Step 2: always PATCH the article — this is the only call that actually saves
+  // Step 2: inject via DOM with retry (primary approach)
   if (thumbToUse) {
-    await tryApiInjection(thumbToUse);
+    tryDomInjectionWithRetry(thumbToUse);
   }
-
-  // Step 3: also attempt DOM injection for immediate visual preview (best-effort)
-  if (iframelyThumb) tryDomInjection(iframelyThumb);
-  else if (fallbackThumbnailUrl) tryDomInjection(fallbackThumbnailUrl);
 }
