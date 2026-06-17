@@ -56,6 +56,50 @@ function topFetch(input: string, init?: RequestInit): Promise<Response> {
   }
 }
 
+// Staffbase SPA sends a CSRF token with mutating requests.
+// Read it from the parent frame's cookies and return the matching header map.
+function getCsrfHeaders(): Record<string, string> {
+  const headers: Record<string, string> = {
+    'X-Requested-With': 'XMLHttpRequest',
+    'Accept': 'application/json',
+  };
+  try {
+    const cookie = (window.top as Window).document.cookie;
+    console.info('[KrogerVideoWidget] cookies available:', cookie ? 'yes' : 'none');
+
+    // Try common CSRF cookie names used by Staffbase / Angular / Rails SPAs
+    const patterns: [RegExp, string][] = [
+      [/(?:^|;\s*)XSRF-TOKEN=([^;]+)/i,         'X-XSRF-TOKEN'],
+      [/(?:^|;\s*)csrf-token=([^;]+)/i,          'X-CSRF-Token'],
+      [/(?:^|;\s*)csrfToken=([^;]+)/i,           'X-CSRF-Token'],
+      [/(?:^|;\s*)staffbase[-_]csrf=([^;]+)/i,   'X-CSRF-Token'],
+      [/(?:^|;\s*)_csrf=([^;]+)/i,               'X-CSRF-Token'],
+    ];
+    for (const [re, headerName] of patterns) {
+      const m = cookie.match(re);
+      if (m) {
+        headers[headerName] = decodeURIComponent(m[1]);
+        console.info('[KrogerVideoWidget] CSRF token found via cookie pattern, header:', headerName);
+        break;
+      }
+    }
+
+    // Also check common meta tag locations
+    if (!headers['X-CSRF-Token'] && !headers['X-XSRF-TOKEN']) {
+      const meta = (window.top as Window).document.querySelector<HTMLMetaElement>(
+        'meta[name="csrf-token"], meta[name="CSRF-Token"]'
+      );
+      if (meta?.content) {
+        headers['X-CSRF-Token'] = meta.content;
+        console.info('[KrogerVideoWidget] CSRF token found via meta tag');
+      }
+    }
+  } catch (e) {
+    console.warn('[KrogerVideoWidget] Could not read CSRF token:', e);
+  }
+  return headers;
+}
+
 function setReactInputValue(el: HTMLInputElement, value: string): void {
   const nativeSetter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set;
   if (nativeSetter) {
@@ -160,7 +204,7 @@ async function tryApiInjection(thumbnailUrl: string): Promise<boolean> {
       const res = await topFetch(url, {
         method: 'PATCH',
         credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...getCsrfHeaders() },
         body: JSON.stringify(body),
       });
       console.info(`[KrogerVideoWidget] PATCH ${url} with`, body, '→', res.status);
