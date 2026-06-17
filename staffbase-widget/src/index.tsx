@@ -61,7 +61,7 @@ const factory: BlockFactory = (BaseBlockClass, _widgetApi) => {
             this.setAttribute('videoduration', duration);
             this.setAttribute('videoexpiry',   expiryDate);
             this.setAttribute('videothumb',    thumbnailUrl);
-            injectArticleCoverImage(thumbnailUrl);
+            injectArticleCoverImage(url, thumbnailUrl);
             this.doRenderEditor();
           }}
         />
