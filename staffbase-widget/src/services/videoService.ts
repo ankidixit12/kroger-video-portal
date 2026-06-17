@@ -47,32 +47,18 @@ function msToDuration(ms: number): string {
   return `${min}:${sec < 10 ? '0' + sec : sec}`;
 }
 
-function metaValueToString(value: any): string | null {
-  if (value == null) return null;
-  if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
-    return String(value);
-  }
-  if (Array.isArray(value)) {
-    for (const item of value) {
-      const parsed = metaValueToString(item);
-      if (parsed) return parsed;
+function getMeta(metadata: any[], title: string): string | null {
+  const field = (metadata || []).find((m: any) => m.title === title);
+  if (!field || field.value == null) return null;
+  if (Array.isArray(field.value)) return field.value.length ? String(field.value[0]) : null;
+  if (typeof field.value === 'object') {
+    // Handle objects like {guid, value} by extracting the value property
+    if (field.value && field.value.value !== undefined) {
+      return String(field.value.value);
     }
     return null;
   }
-  if (typeof value === 'object') {
-    if (value.value !== undefined) return metaValueToString(value.value);
-    if (value.name !== undefined) return metaValueToString(value.name);
-    if (value.title !== undefined) return metaValueToString(value.title);
-    if (value.label !== undefined) return metaValueToString(value.label);
-    if (value.text !== undefined) return metaValueToString(value.text);
-  }
-  return null;
-}
-
-function getMeta(metadata: any[], title: string): string | null {
-  const field = (metadata || []).find((m: any) => m.title === title);
-  if (!field) return null;
-  return metaValueToString(field.value);
+  return String(field.value);
 }
 
 function safeString(val: any): string {
@@ -88,7 +74,6 @@ function safeString(val: any): string {
 
 function mapKuluToVideoItem(k: any): VideoItem {
   const division = getMeta(k.metadata, 'Division') || '';
-  const region = getMeta(k.metadata, 'Location') || getMeta(k.metadata, 'Region') || '';
   const category = getMeta(k.metadata, 'Category') || 'Corporate';
   const description = getMeta(k.metadata, 'Description') || '';
   const metaAuthor = getMeta(k.metadata, 'Author');
@@ -102,7 +87,6 @@ function mapKuluToVideoItem(k: any): VideoItem {
     duration: k.duration ? msToDuration(k.duration) : '0:00',
     category: safeString(category),
     division: division ? safeString(division) : undefined,
-    region: region ? safeString(region) : undefined,
     publishedAt: safeString(k.published || k.created || ''),
     // Qumu uses withdrawOn as the effective video expiry date.
     expiryDate: safeString(k.withdrawOn || k.expiryDate || ''),
