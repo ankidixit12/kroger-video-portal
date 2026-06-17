@@ -126,9 +126,9 @@ async function fetchIframelyThumbnail(videoUrl: string): Promise<string | null> 
   }
 }
 
-// ── Strategy 2: Staffbase REST API ─────────────────────────────────────────
+// ── Strategy 2: Staffbase articles GET ────────────────────────────────────
 
-async function tryApiInjection(thumbnailUrl: string): Promise<boolean> {
+async function tryApiInjection(_thumbnailUrl: string): Promise<boolean> {
   const contentId = extractContentId();
   if (!contentId) {
     console.warn('[KrogerVideoWidget] Could not parse content ID from URL:', getTopOrigin());
@@ -136,25 +136,15 @@ async function tryApiInjection(thumbnailUrl: string): Promise<boolean> {
   }
   try {
     const url = `${getTopOrigin()}/api/articles/${contentId}`;
-    const payloads = [
-      { thumbnail:     { url: thumbnailUrl, type: 'image' } },
-      { headerImage:   { url: thumbnailUrl } },
-      { coverImageUrl: thumbnailUrl },
-    ];
-    for (const body of payloads) {
-      const res = await fetch(url, {
-        method: 'PATCH', credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-      });
-      if (res.ok) {
-        console.info('[KrogerVideoWidget] Article cover set via Staffbase API. Payload:', body);
-        return true;
-      }
+    const res = await fetch(url, { method: 'GET', credentials: 'include' });
+    if (res.ok) {
+      const data = await res.json();
+      console.info('[KrogerVideoWidget] Article GET succeeded:', data);
+      return true;
     }
-    console.warn('[KrogerVideoWidget] Staffbase API did not accept cover image payload.');
+    console.warn('[KrogerVideoWidget] Article GET returned', res.status);
   } catch (e) {
-    console.warn('[KrogerVideoWidget] Staffbase API call failed:', e);
+    console.warn('[KrogerVideoWidget] Article GET failed:', e);
   }
   return false;
 }
