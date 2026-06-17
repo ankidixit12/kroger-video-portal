@@ -114,13 +114,20 @@ function hookTopFetch(thumbUrl: string): void {
           url.includes('/api/v3/contents/') ||
           url.includes('/api/content/') ||
           url.includes('/api/news/') ||
-          url.includes('/api/posts/');
+          url.includes('/api/posts/') ||
+          url.includes('/api/plugin/news/');
 
         if (isArticleSave) {
-          body.thumbnail   = { url: thumbUrl, type: 'image/jpeg' };
-          body.headerImage = { url: thumbUrl };
+          console.info('[KrogerVideoWidget] Fetch contents:', JSON.stringify(body.contents ?? body));
+          const target = body.contents ?? body;
+          target.thumbnail   = { url: thumbUrl, type: 'image/jpeg' };
+          target.headerImage = { url: thumbUrl };
+          target.coverImage  = { url: thumbUrl };
+          target.media       = { url: thumbUrl, type: 'image' };
+          body.thumbnail     = { url: thumbUrl, type: 'image/jpeg' };
+          body.headerImage   = { url: thumbUrl };
           const patched = { ...init, body: JSON.stringify(body) };
-          console.info('[KrogerVideoWidget] ✅ Injected thumbnail into payload:', thumbUrl);
+          console.info('[KrogerVideoWidget] ✅ Injected thumbnail into contents:', thumbUrl);
           clearTimeout(restoreTimer);
           (topWin as any).fetch = originalFetch;
           console.info('[KrogerVideoWidget] Fetch hook removed after injection.');
