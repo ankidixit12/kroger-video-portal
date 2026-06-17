@@ -2,6 +2,8 @@ https://staffbase-qumu-service-gfh7bccrescea0fe.eastus-01.azurewebsites.net/staf
 qumu
 qumu@123456
 
+https://www.youtube.com/watch?v=62XccJOh9Lg&list=RD62XccJOh9Lg&start_radio=1
+
 front door-> https://videowidget-frontdoor-gxfwf7a3cygtbjf7.a01.azurefd.net/
 ## Qumu Widget CORS Lock (Staffbase Origin)
 
