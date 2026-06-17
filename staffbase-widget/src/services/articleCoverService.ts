@@ -165,9 +165,19 @@ function hookTopFetch(thumbUrl: string): void {
               _url.includes('/api/news/') ||
               _url.includes('/api/posts/');
             if (isArticleSave) {
+              // Log the full contents structure so we can see the correct field name
+              console.info('[KrogerVideoWidget] XHR contents:', JSON.stringify(parsed.contents ?? parsed));
+
+              // Inject at top level and inside contents object
+              const target = parsed.contents ?? parsed;
+              target.thumbnail   = { url: thumbUrl, type: 'image/jpeg' };
+              target.headerImage = { url: thumbUrl };
+              target.coverImage  = { url: thumbUrl };
+              target.media       = { url: thumbUrl, type: 'image' };
+              // Also try at top level regardless
               parsed.thumbnail   = { url: thumbUrl, type: 'image/jpeg' };
               parsed.headerImage = { url: thumbUrl };
-              console.info('[KrogerVideoWidget] ✅ XHR thumbnail injected:', thumbUrl);
+              console.info('[KrogerVideoWidget] ✅ XHR thumbnail injected inside contents:', thumbUrl);
               return originalSend(JSON.stringify(parsed));
             }
           } catch {}
