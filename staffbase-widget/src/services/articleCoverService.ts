@@ -126,26 +126,43 @@ async function fetchIframelyThumbnail(videoUrl: string): Promise<string | null> 
   }
 }
 
-// ── Strategy 2: Staffbase articles GET ────────────────────────────────────
+// ── Strategy 2: Staffbase articles PATCH ──────────────────────────────────
 
-async function tryApiInjection(_thumbnailUrl: string): Promise<boolean> {
+async function tryApiInjection(thumbnailUrl: string): Promise<boolean> {
   const contentId = extractContentId();
   if (!contentId) {
     console.warn('[KrogerVideoWidget] Could not parse content ID from URL:', getTopOrigin());
     return false;
   }
-  try {
-    const url = `${getTopOrigin()}/api/articles/${contentId}`;
-    const res = await fetch(url, { method: 'GET', credentials: 'include' });
-    if (res.ok) {
-      const data = await res.json();
-      console.info('[KrogerVideoWidget] Article GET succeeded:', data);
-      return true;
+  const url = `${getTopOrigin()}/api/articles/${contentId}`;
+
+  // Try payload shapes in order — update once the correct one is confirmed
+  const payloads = [
+    { thumbnail: { url: thumbnailUrl, type: 'image/jpeg' } },
+    { thumbnail: { url: thumbnailUrl } },
+    { thumbnail: thumbnailUrl },
+    { image:     { url: thumbnailUrl } },
+    { headerImage: { url: thumbnailUrl } },
+  ];
+
+  for (const body of payloads) {
+    try {
+      const res = await fetch(url, {
+        method: 'PATCH',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      console.info(`[KrogerVideoWidget] PATCH ${url} with`, body, '→', res.status);
+      if (res.ok) {
+        console.info('[KrogerVideoWidget] Article cover set. Working payload:', JSON.stringify(body));
+        return true;
+      }
+    } catch (e) {
+      console.warn('[KrogerVideoWidget] PATCH failed:', e);
     }
-    console.warn('[KrogerVideoWidget] Article GET returned', res.status);
-  } catch (e) {
-    console.warn('[KrogerVideoWidget] Article GET failed:', e);
   }
+  console.warn('[KrogerVideoWidget] All PATCH payloads failed. Share the console output to identify the correct field name.');
   return false;
 }
 
