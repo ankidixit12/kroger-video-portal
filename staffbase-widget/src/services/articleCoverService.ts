@@ -1,12 +1,11 @@
 /**
  * On video selection:
  *   1. Calls iframely to get the thumbnail URL.
- *   2. Hooks window.top.fetch.
- *      - On the FIRST Staffbase request it intercepts (any kind), it reads the
- *        CSRF token from that request's headers and immediately PATCHes the
- *        article cover image directly — no need to wait for the user to save.
- *      - On every subsequent article save/publish, it injects the thumbnail
- *        into the payload as a safety net.
+ *   2. GETs the current article from Staffbase, injects the thumbnail into the
+ *      full payload, then PUTs it back — so the cover image is set immediately
+ *      when "Add Video" is clicked without waiting for the user to save.
+ *   3. Also hooks window.top.fetch as a safety net: if the direct call fails,
+ *      the thumbnail is injected into the next article save/publish request.
  */
 
 function topFetch(input: string, init?: RequestInit): Promise<Response> {
@@ -49,37 +48,11 @@ function extractArticleId(): string | null {
       win.__contentId__                 ||
       win.__articleId__;
     if (fromGlobals) {
-      console.info('[KrogerVideoWidget] Article ID (from globals):', fromGlobals);
+      console.info('[KrogerVideoWidget] Article ID (globals):', fromGlobals);
       return String(fromGlobals);
     }
   } catch {}
   console.warn('[KrogerVideoWidget] Could not extract article ID from parent URL.');
-  return null;
-}
-
-/** Read CSRF token from a fetch RequestInit's headers (any casing). */
-function extractCsrfFromHeaders(headers: HeadersInit | undefined): string | null {
-  if (!headers) return null;
-  try {
-    if (headers instanceof Headers) {
-      return headers.get('X-CSRF-Token') || headers.get('X-XSRF-TOKEN') || null;
-    }
-    if (Array.isArray(headers)) {
-      for (const [k, v] of headers) {
-        const kl = k.toLowerCase();
-        if (kl === 'x-csrf-token' || kl === 'x-xsrf-token') return v;
-      }
-      return null;
-    }
-    const obj = headers as Record<string, string>;
-    return (
-      obj['X-CSRF-Token']  ||
-      obj['X-XSRF-TOKEN']  ||
-      obj['x-csrf-token']  ||
-      obj['x-xsrf-token']  ||
-      null
-    );
-  } catch {}
   return null;
 }
 
@@ -91,8 +64,8 @@ function hasTitleInPayload(payload: any): boolean {
   if (!contents || typeof contents !== 'object') return false;
   if (contents.title != null) return true;
 
-  return Object.values(contents).some(
-    (localized: any) => localized && typeof localized === 'object' && localized.title != null
+  return Object.keys(contents).some(
+    (k) => contents[k] && typeof contents[k] === 'object' && contents[k].title != null
   );
 }
 
@@ -100,9 +73,9 @@ function injectThumbnailIntoPayload(payload: any, thumbUrl: string): void {
   if (!payload || typeof payload !== 'object') return;
 
   const imageWithType = { url: thumbUrl, type: 'image/jpeg' };
-  const imageRef = { url: thumbUrl };
+  const imageRef      = { url: thumbUrl };
 
-  payload.thumbnail  = imageWithType;
+  payload.thumbnail   = imageWithType;
   payload.headerImage = imageRef;
   payload.coverImage  = imageRef;
   payload.media       = { url: thumbUrl, type: 'image' };
@@ -135,7 +108,7 @@ const HARDCODED_YOUTUBE_URL = 'https://www.youtube.com/watch?v=62XccJOh9Lg&list=
 
 async function fetchIframelyThumbnail(): Promise<string | null> {
   try {
-    const origin = getTopOrigin();
+    const origin   = getTopOrigin();
     if (!origin) return null;
     const encoded  = encodeURIComponent(HARDCODED_YOUTUBE_URL);
     const endpoint = `${origin}/api/iframely?url=${encoded}&nowrap=on&callback=`;
@@ -163,62 +136,93 @@ async function fetchIframelyThumbnail(): Promise<string | null> {
   }
 }
 
-// ── Step 2: direct API call using CSRF token captured from Staffbase ───────
+// ── Step 2: GET article → inject thumbnail → PUT back ─────────────────────
 
-async function callStaffbaseArticleAPIWithCsrf(thumbUrl: string, csrfToken: string): Promise<boolean> {
+async function directInjectArticleCover(thumbUrl: string): Promise<boolean> {
   const origin    = getTopOrigin();
   const articleId = extractArticleId();
   if (!origin || !articleId) return false;
 
-  const payload = {
-    coverImage:  { url: thumbUrl },
-    headerImage: { url: thumbUrl },
-    thumbnail:   { url: thumbUrl, type: 'image/jpeg' },
-    media:       { url: thumbUrl, type: 'image' },
-  };
+  // Log parent cookies so we can see what auth tokens are available
+  try {
+    console.info('[KrogerVideoWidget] Parent cookies:', (window.top as Window).document.cookie || '(none / HttpOnly)');
+  } catch {}
 
-  const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
-    'X-CSRF-Token': csrfToken,
-    'X-XSRF-TOKEN': csrfToken,
-  };
-
-  // PUT first — /api/articles/ returns 405 on PATCH
-  const attempts: Array<{ path: string; method: string }> = [
-    { path: `/api/articles/${articleId}`,    method: 'PUT'   },
-    { path: `/api/v3/contents/${articleId}`, method: 'PATCH' },
-    { path: `/api/v3/contents/${articleId}`, method: 'PUT'   },
-    { path: `/api/content/${articleId}`,     method: 'PATCH' },
-    { path: `/api/news/${articleId}`,        method: 'PATCH' },
-    { path: `/api/posts/${articleId}`,       method: 'PATCH' },
+  const endpoints = [
+    `${origin}/api/articles/${articleId}`,
+    `${origin}/api/v3/contents/${articleId}`,
+    `${origin}/api/content/${articleId}`,
   ];
 
-  for (const { path, method } of attempts) {
+  for (const endpoint of endpoints) {
     try {
-      const res = await topFetch(origin + path, { method, headers, credentials: 'include', body: JSON.stringify(payload) });
-      console.info('[KrogerVideoWidget]', method, path, '→', res.status);
-      if (res.ok) {
+      // 1. GET the full current article (no CSRF needed for reads)
+      const getRes = await topFetch(endpoint, { credentials: 'include' });
+      console.info('[KrogerVideoWidget] GET', endpoint.replace(origin, ''), '→', getRes.status);
+      if (!getRes.ok) continue;
+
+      // Log all response headers — helps find where the CSRF / auth token lives
+      const respHeaders: Record<string, string> = {};
+      getRes.headers.forEach((v, k) => { respHeaders[k] = v; });
+      console.info('[KrogerVideoWidget] GET response headers:', respHeaders);
+
+      // Pull any CSRF token Staffbase might return in the response
+      const csrfToken =
+        getRes.headers.get('X-CSRF-Token')  ||
+        getRes.headers.get('X-XSRF-TOKEN')  ||
+        getRes.headers.get('csrf-token')    ||
+        null;
+
+      const article = await getRes.json();
+      console.info('[KrogerVideoWidget] Article keys:', Object.keys(article));
+
+      // 2. Inject thumbnail into the full article payload
+      injectThumbnailIntoPayload(article, thumbUrl);
+
+      // 3. PUT the full updated payload back
+      const putHeaders: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (csrfToken) {
+        putHeaders['X-CSRF-Token'] = csrfToken;
+        putHeaders['X-XSRF-TOKEN'] = csrfToken;
+        console.info('[KrogerVideoWidget] Using CSRF from GET response:', csrfToken);
+      }
+
+      const putRes = await topFetch(endpoint, {
+        method: 'PUT',
+        headers: putHeaders,
+        credentials: 'include',
+        body: JSON.stringify(article),
+      });
+      console.info('[KrogerVideoWidget] PUT', endpoint.replace(origin, ''), '→', putRes.status);
+
+      if (putRes.ok) {
         console.info('[KrogerVideoWidget] ✅ Article cover image set directly:', thumbUrl);
         return true;
       }
+
+      // Log PUT response body on failure for diagnostics
+      try {
+        const errBody = await putRes.text();
+        console.warn('[KrogerVideoWidget] PUT error body:', errBody);
+      } catch {}
+
     } catch (e) {
-      console.warn('[KrogerVideoWidget] Error on', method, path, e);
+      console.warn('[KrogerVideoWidget] Error with', endpoint.replace(origin, ''), e);
     }
   }
 
-  console.warn('[KrogerVideoWidget] Direct API attempts all failed — thumbnail will be injected on next save.');
+  console.warn('[KrogerVideoWidget] Direct injection failed — thumbnail will be injected on next article save.');
   return false;
 }
 
-// ── Step 3: hook window.top.fetch ──────────────────────────────────────────
+// ── Step 3: hook window.top.fetch (safety net on save) ────────────────────
 
 function hookTopFetch(thumbUrl: string): void {
   let topWin: Window;
   try { topWin = window.top as Window; } catch { return; }
 
-  const origin       = getTopOrigin();
+  const origin        = getTopOrigin();
   const originalFetch = (topWin as any).fetch.bind(topWin);
-  let csrfCaptured   = false;   // fire the direct call only once
 
   const restoreTimer = setTimeout(() => {
     (topWin as any).fetch = originalFetch;
@@ -237,33 +241,6 @@ function hookTopFetch(thumbUrl: string): void {
           : (input as Request).url;
     const method = (init?.method || 'GET').toUpperCase();
 
-    // ── Capture CSRF token from the first Staffbase request we see ──
-    if (!csrfCaptured && url.startsWith(origin) && !url.includes('/api/iframely')) {
-      const csrfToken = extractCsrfFromHeaders(init?.headers);
-      if (csrfToken) {
-        csrfCaptured = true;
-        console.info('[KrogerVideoWidget] CSRF token captured — firing direct article API call.');
-        callStaffbaseArticleAPIWithCsrf(thumbUrl, csrfToken);
-      }
-    }
-
-    // ── Log every non-trivial Staffbase call ────────────────────────
-    if (
-      url.startsWith(origin) &&
-      !url.includes('/api/iframely') &&
-      !url.includes('/count') &&
-      !url.includes('.js') &&
-      !url.includes('.css')
-    ) {
-      try {
-        const bodyParsed = typeof init?.body === 'string' ? JSON.parse(init.body) : null;
-        console.info('[KrogerVideoWidget] Staffbase fetch →', method, url.replace(origin, ''), bodyParsed ?? '');
-      } catch {
-        console.info('[KrogerVideoWidget] Staffbase fetch →', method, url.replace(origin, ''));
-      }
-    }
-
-    // ── Inject thumbnail on article save/publish (safety net) ───────
     const isMutating =
       url.startsWith(origin) &&
       (method === 'PATCH' || method === 'PUT' || method === 'POST') &&
@@ -272,6 +249,7 @@ function hookTopFetch(thumbUrl: string): void {
     if (isMutating) {
       try {
         const body = JSON.parse(init!.body as string);
+
         const isArticleSave =
           url.includes('/api/articles/')    ||
           url.includes('/api/v3/contents/') ||
@@ -281,13 +259,14 @@ function hookTopFetch(thumbUrl: string): void {
           url.includes('/api/plugin/news/');
 
         if (isArticleSave) {
+          console.info('[KrogerVideoWidget] Article save intercepted:', method, url.replace(origin, ''));
           const hasTitle = hasTitleInPayload(body);
           if (!hasTitle) {
-            console.info('[KrogerVideoWidget] Skipping injection — no title in payload (autosave).');
+            console.info('[KrogerVideoWidget] Skipping — no title in payload (autosave).');
           } else {
             injectThumbnailIntoPayload(body, thumbUrl);
             const patched = { ...init, body: JSON.stringify(body) };
-            console.info('[KrogerVideoWidget] ✅ Injected thumbnail into save payload:', thumbUrl);
+            console.info('[KrogerVideoWidget] ✅ Thumbnail injected into save payload:', thumbUrl);
             clearTimeout(restoreTimer);
             (topWin as any).fetch = originalFetch;
             return originalFetch(input, patched);
@@ -301,9 +280,9 @@ function hookTopFetch(thumbUrl: string): void {
     return originalFetch(input, init);
   };
 
-  console.info('[KrogerVideoWidget] Fetch hook installed — waiting for first Staffbase request to capture CSRF token.');
+  console.info('[KrogerVideoWidget] Fetch hook installed (safety net for article save).');
 
-  // XHR hook (safety net in case Staffbase uses XHR instead of fetch)
+  // XHR hook for Staffbase environments that use XHR instead of fetch
   const OrigXHR = (topWin as any).XMLHttpRequest;
   (topWin as any).XMLHttpRequest = function () {
     const xhr = new OrigXHR();
@@ -356,8 +335,9 @@ export async function injectArticleCoverImage(_videoUrl: string, fallbackThumbna
     return;
   }
 
-  // Install hook — it captures the CSRF token from the first Staffbase request
-  // and immediately fires the direct article API call with that token.
-  // It also injects the thumbnail on every subsequent article save as a safety net.
+  // Try immediate injection via GET → PUT
+  directInjectArticleCover(thumbUrl);
+
+  // Install fetch hook as safety net for article save/publish
   hookTopFetch(thumbUrl);
 }
