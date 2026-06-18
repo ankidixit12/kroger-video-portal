@@ -32,3 +32,26 @@ Because `public/` is copied into `dist/` during build, this config is deployed w
 ## Important Limitation
 
 This controls browser CORS policy for requests, but it is not a hard authentication mechanism. Direct URL access is still possible if someone knows the file URL.
+
+POC if Custom widget can access, use, and respect the user's active Staffbase session — without requiring separate authentication.
+
+
+
+Selected
+
+
+Improve work item
+
+Key details
+Acceptance Criteria
+
+Confirm which session/auth fields are accessible via the widget SDK
+
+Document token lifecycle (expiry, refresh) from within a widget
+
+Proof-of-concept: widget making an authenticated API call using the session token
+
+Description
+
+Explore what the Widget SDK / web component lifecycle exposes (e.g., accessToken, user claims, locale.
+Session Expiry & Re-auth Handling in the Widget
