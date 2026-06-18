@@ -1,13 +1,11 @@
 /**
  * On video selection:
- *   1. Calls iframely to get the thumbnail URL.
- *   2. Hooks window.top.fetch so when the user publishes/saves the article,
- *      Staffbase's own PATCH request is intercepted and the thumbnail is
- *      injected into the payload before it goes out.
- *   3. The request succeeds because it originates from Staffbase's own code
- *      (correct CSRF token, correct origin) — not from our iframe.
- *
- * No auto-clicks. Thumbnail is saved when the user clicks Publish/Save.
+ *   1. Calls iframely (at krogertest.staffbase.com) to get the thumbnail URL
+ *      for the selected YouTube video.
+ *   2. Immediately PATCHes the Staffbase article API to set the cover image
+ *      as soon as "Add Video" is clicked.
+ *   3. Also hooks window.top.fetch as a safety net so the thumbnail is
+ *      re-injected if the user saves/publishes the article afterwards.
  */
 
 function topFetch(input: string, init?: RequestInit): Promise<Response> {
@@ -19,7 +17,33 @@ function getTopOrigin(): string {
   try { return (window.top as Window).location.origin; } catch { return ''; }
 }
 
-const HARDCODED_YOUTUBE_URL = 'https://www.youtube.com/watch?v=62XccJOh9Lg&list=RD62XccJOh9Lg&start_radio=1';
+/**
+ * Extracts the article ID from the Staffbase Studio URL in the parent window.
+ * Handles common Staffbase URL patterns:
+ *   /admin/content-management/edit/{id}
+ *   /admin/articles/{id}
+ *   /api/v3/contents/{id}
+ *   etc.
+ */
+function extractArticleId(): string | null {
+  try {
+    const href = (window.top as Window).location.href;
+    const patterns = [
+      /\/articles?\/([a-zA-Z0-9_-]{5,})/,
+      /\/contents?\/([a-zA-Z0-9_-]{5,})/,
+      /\/news\/([a-zA-Z0-9_-]{5,})/,
+      /\/posts?\/([a-zA-Z0-9_-]{5,})/,
+      /\/edit\/([a-zA-Z0-9_-]{5,})/,
+      /[?&]id=([a-zA-Z0-9_-]{5,})/,
+    ];
+    for (const pattern of patterns) {
+      const match = href.match(pattern);
+      if (match?.[1]) return match[1];
+    }
+    console.info('[KrogerVideoWidget] Parent URL:', href);
+  } catch {}
+  return null;
+}
 
 function hasTitleInPayload(payload: any): boolean {
   if (!payload || typeof payload !== 'object') return false;
@@ -40,7 +64,6 @@ function injectThumbnailIntoPayload(payload: any, thumbUrl: string): void {
   const imageWithType = { url: thumbUrl, type: 'image/jpeg' };
   const imageRef = { url: thumbUrl };
 
-  // Keep legacy fields for payload variants that still honor these keys.
   payload.thumbnail = imageWithType;
   payload.headerImage = imageRef;
   payload.coverImage = imageRef;
@@ -72,6 +95,8 @@ function injectThumbnailIntoPayload(payload: any, thumbUrl: string): void {
 
 // ── Step 1: iframely call ──────────────────────────────────────────────────
 
+const HARDCODED_YOUTUBE_URL = 'https://www.youtube.com/watch?v=62XccJOh9Lg&list=RD62XccJOh9Lg&start_radio=1';
+
 async function fetchIframelyThumbnail(): Promise<string | null> {
   try {
     const origin = getTopOrigin();
@@ -102,7 +127,59 @@ async function fetchIframelyThumbnail(): Promise<string | null> {
   }
 }
 
-// ── Step 2: hook window.top.fetch ──────────────────────────────────────────
+// ── Step 2: direct Staffbase article API call ──────────────────────────────
+
+/**
+ * Immediately PATCHes the Staffbase article to set the cover/header image
+ * as soon as "Add Video" is clicked — no need to wait for the user to save.
+ */
+async function callStaffbaseArticleAPI(thumbUrl: string): Promise<boolean> {
+  const origin = getTopOrigin();
+  if (!origin) return false;
+
+  const articleId = extractArticleId();
+  if (!articleId) {
+    console.warn('[KrogerVideoWidget] Could not extract article ID from parent URL — will rely on fetch hook instead.');
+    return false;
+  }
+
+  const payload = {
+    coverImage:  { url: thumbUrl },
+    headerImage: { url: thumbUrl },
+    thumbnail:   { url: thumbUrl, type: 'image/jpeg' },
+    media:       { url: thumbUrl, type: 'image' },
+  };
+
+  const endpoints = [
+    `${origin}/api/articles/${articleId}`,
+    `${origin}/api/v3/contents/${articleId}`,
+    `${origin}/api/content/${articleId}`,
+  ];
+
+  for (const endpoint of endpoints) {
+    try {
+      console.info('[KrogerVideoWidget] Calling Staffbase article API:', endpoint);
+      const res = await topFetch(endpoint, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify(payload),
+      });
+      if (res.ok) {
+        console.info('[KrogerVideoWidget] ✅ Article cover image set via direct API call:', thumbUrl);
+        return true;
+      }
+      console.warn('[KrogerVideoWidget] Staffbase API returned', res.status, 'for', endpoint.replace(origin, ''));
+    } catch (e) {
+      console.warn('[KrogerVideoWidget] Staffbase API error for', endpoint.replace(origin, ''), e);
+    }
+  }
+
+  console.warn('[KrogerVideoWidget] All direct API attempts failed — will rely on fetch hook.');
+  return false;
+}
+
+// ── Step 3: hook window.top.fetch (safety net) ────────────────────────────
 
 function hookTopFetch(thumbUrl: string): void {
   let topWin: Window;
@@ -111,7 +188,6 @@ function hookTopFetch(thumbUrl: string): void {
   const origin = getTopOrigin();
   const originalFetch = (topWin as any).fetch.bind(topWin);
 
-  // Restore after 10 minutes regardless
   const restoreTimer = setTimeout(() => {
     (topWin as any).fetch = originalFetch;
     console.info('[KrogerVideoWidget] Fetch hook removed (timeout).');
@@ -129,8 +205,6 @@ function hookTopFetch(thumbUrl: string): void {
           : (input as Request).url;
     const method = (init?.method || 'GET').toUpperCase();
 
-    // Log every Staffbase API call (skip iframely + asset requests)
-    // so we can see exactly what Staffbase sends when saving the article.
     if (
       url.startsWith(origin) &&
       !url.includes('/api/iframely') &&
@@ -146,7 +220,6 @@ function hookTopFetch(thumbUrl: string): void {
       }
     }
 
-    // Intercept ANY mutating call (PATCH/PUT/POST) to the Staffbase origin
     const isMutating =
       url.startsWith(origin) &&
       (method === 'PATCH' || method === 'PUT' || method === 'POST') &&
@@ -157,7 +230,6 @@ function hookTopFetch(thumbUrl: string): void {
         const body = JSON.parse(init!.body as string);
         console.info('[KrogerVideoWidget] Mutating call intercepted:', method, url.replace(origin, ''), JSON.parse(JSON.stringify(body)));
 
-        // Only inject thumbnail if this looks like an article/content save
         const isArticleSave =
           url.includes('/api/articles/') ||
           url.includes('/api/v3/contents/') ||
@@ -174,7 +246,7 @@ function hookTopFetch(thumbUrl: string): void {
           } else {
             injectThumbnailIntoPayload(body, thumbUrl);
             const patched = { ...init, body: JSON.stringify(body) };
-            console.info('[KrogerVideoWidget] ✅ Injected thumbnail into contents:', thumbUrl);
+            console.info('[KrogerVideoWidget] ✅ Injected thumbnail into save payload:', thumbUrl);
             clearTimeout(restoreTimer);
             (topWin as any).fetch = originalFetch;
             console.info('[KrogerVideoWidget] Fetch hook removed after injection.');
@@ -189,9 +261,8 @@ function hookTopFetch(thumbUrl: string): void {
     return originalFetch(input, init);
   };
 
-  console.info('[KrogerVideoWidget] Fetch hook installed. Thumbnail will be injected on next article save/publish.');
+  console.info('[KrogerVideoWidget] Fetch hook installed as safety net for article save/publish.');
 
-  // Also hook XMLHttpRequest in case Staffbase uses XHR instead of fetch
   const OrigXHR = (topWin as any).XMLHttpRequest;
   (topWin as any).XMLHttpRequest = function () {
     const xhr = new OrigXHR();
@@ -221,15 +292,12 @@ function hookTopFetch(thumbUrl: string): void {
               _url.includes('/api/posts/');
             if (isArticleSave) {
               console.info('[KrogerVideoWidget] XHR contents:', JSON.stringify(parsed.contents ?? parsed));
-
-              // Only inject on a FULL save that includes title.
-              // Partial/autosave payloads omit title and Staffbase rejects them with 400.
               const hasTitle = hasTitleInPayload(parsed);
               if (!hasTitle) {
-                console.info('[KrogerVideoWidget] Skipping injection — no title in payload (partial/autosave), letting it pass through.');
+                console.info('[KrogerVideoWidget] Skipping XHR injection — no title in payload (partial/autosave).');
               } else {
                 injectThumbnailIntoPayload(parsed, thumbUrl);
-                console.info('[KrogerVideoWidget] ✅ XHR thumbnail injected inside contents:', thumbUrl);
+                console.info('[KrogerVideoWidget] ✅ XHR thumbnail injected:', thumbUrl);
                 return originalSend(JSON.stringify(parsed));
               }
             }
@@ -248,15 +316,18 @@ function hookTopFetch(thumbUrl: string): void {
 export async function injectArticleCoverImage(_videoUrl: string, fallbackThumbnailUrl: string): Promise<void> {
   if (!getTopOrigin()) return;
 
-  // Step 1: get thumbnail from iframely
+  // Step 1: get thumbnail via iframely using the hardcoded YouTube URL
   const iframelyThumb = await fetchIframelyThumbnail();
   const thumbUrl = iframelyThumb || fallbackThumbnailUrl;
 
   if (!thumbUrl) {
-    console.warn('[KrogerVideoWidget] No thumbnail URL available, skipping hook.');
+    console.warn('[KrogerVideoWidget] No thumbnail URL available, skipping.');
     return;
   }
 
-  // Step 2: install fetch hook — will inject on next article Publish/Save
+  // Step 2: immediately call Staffbase article API on "Add Video" click
+  await callStaffbaseArticleAPI(thumbUrl);
+
+  // Step 3: also install fetch hook as safety net for article save/publish
   hookTopFetch(thumbUrl);
 }
