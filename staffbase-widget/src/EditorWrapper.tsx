@@ -62,16 +62,6 @@ const S: Record<string, React.CSSProperties> = {
 export default function EditorWrapper({ division: _division, videotitle, videourl, videoduration, videoexpiry, videothumb, onSelect }: Props) {
   const [open, setOpen]       = useState(false);
   const [hovered, setHovered] = useState(false);
-  const [copied, setCopied]   = useState(false);
-
-  function handleCopyThumb(e: React.MouseEvent) {
-    e.stopPropagation();
-    if (!videothumb) return;
-    navigator.clipboard.writeText(videothumb).then(() => {
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    });
-  }
 
   function handleSelect(d: string, t: string, u: string, dur: string, exp: string, th: string) {
     onSelect(d, t, u, dur, exp, th);
@@ -132,23 +122,6 @@ export default function EditorWrapper({ division: _division, videotitle, videour
             </div>
           </div>
 
-          {videothumb && (
-            <div style={{ margin: '10px 0 4px', padding: '9px 12px', background: '#fffbeb', border: '1px solid #fcd34d', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#d97706" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
-                  <rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/>
-                </svg>
-                <span style={{ fontSize: 12, color: '#92400e', whiteSpace: 'nowrap' }}>Set as Article Cover Image</span>
-                <span style={{ fontSize: 11, color: '#b45309', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 200 }}>{videothumb}</span>
-              </div>
-              <button
-                onClick={handleCopyThumb}
-                style={{ flexShrink: 0, fontSize: 11, fontWeight: 600, padding: '4px 10px', borderRadius: 6, border: '1px solid #f59e0b', background: copied ? '#d97706' : '#fff', color: copied ? '#fff' : '#92400e', cursor: 'pointer', transition: 'background 0.15s, color 0.15s' }}
-              >
-                {copied ? '✓ Copied' : 'Copy URL'}
-              </button>
-            </div>
-          )}
         </div>
       ) : (
         <div style={S.emptyBox}>

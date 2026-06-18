@@ -104,15 +104,14 @@ function injectThumbnailIntoPayload(payload: any, thumbUrl: string): void {
 
 // ── Step 1: iframely call ──────────────────────────────────────────────────
 
-const HARDCODED_YOUTUBE_URL = 'https://www.youtube.com/watch?v=62XccJOh9Lg&list=RD62XccJOh9Lg&start_radio=1';
-
-async function fetchIframelyThumbnail(): Promise<string | null> {
+async function fetchIframelyThumbnail(videoUrl: string): Promise<string | null> {
   try {
     const origin   = getTopOrigin();
     if (!origin) return null;
-    const encoded  = encodeURIComponent(HARDCODED_YOUTUBE_URL);
+    const encoded  = encodeURIComponent(videoUrl);
     const endpoint = `${origin}/api/iframely?url=${encoded}&nowrap=on&callback=`;
-    console.info('[KrogerVideoWidget] iframely call:', endpoint);
+    console.info('[KrogerVideoWidget] iframely call with URL:', videoUrl);
+    console.info('[KrogerVideoWidget] iframely endpoint:', endpoint);
     const res = await topFetch(endpoint, { credentials: 'include' });
     if (!res.ok) { console.warn('[KrogerVideoWidget] iframely returned', res.status); return null; }
     const text = await res.text();
@@ -324,16 +323,20 @@ function hookTopFetch(thumbUrl: string): void {
 
 // ── Public entry point ─────────────────────────────────────────────────────
 
-export async function injectArticleCoverImage(_videoUrl: string, fallbackThumbnailUrl: string): Promise<void> {
-  if (!getTopOrigin()) return;
+export async function injectArticleCoverImage(videoUrl: string, fallbackThumbnailUrl?: string): Promise<void> {
+  if (!getTopOrigin() || !videoUrl) return;
 
-  const iframelyThumb = await fetchIframelyThumbnail();
+  console.info('[KrogerVideoWidget] Starting cover image injection for video:', videoUrl);
+  
+  const iframelyThumb = await fetchIframelyThumbnail(videoUrl);
   const thumbUrl = iframelyThumb || fallbackThumbnailUrl;
 
   if (!thumbUrl) {
     console.warn('[KrogerVideoWidget] No thumbnail URL available, skipping.');
     return;
   }
+
+  console.info('[KrogerVideoWidget] Using thumbnail URL:', thumbUrl);
 
   // Try immediate injection via GET → PUT
   directInjectArticleCover(thumbUrl);

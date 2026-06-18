@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { VideoItem, fetchVideos } from './services/videoService';
+import { injectArticleCoverImage } from './services/articleCoverService';
 
 const ITEMS_PER_PAGE = 32;
 
@@ -215,7 +216,7 @@ const KrogerDivisionVideoPortal: React.FC<Props> = ({ widgettitle }) => {
   const handleSelect = (id: string | number) => setSelectedId(id);
   const handleCancel = () => setSelectedId(null);
   const selectedVideo = allVideos.find(v => v.id === selectedId);
-
+  console.log('Selected video:', selectedVideo);
   return (
     <div style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif', background: '#f0f4f8', minHeight: 200, paddingBottom: 72, position: 'relative' }}>
       <style>{`@keyframes kvp-spin { to { transform: rotate(360deg); } }`}</style>
@@ -312,7 +313,11 @@ const KrogerDivisionVideoPortal: React.FC<Props> = ({ widgettitle }) => {
         </button>
         <button
           disabled={!selectedId}
-          onClick={() => {}}
+          onClick={() => {
+            if (selectedVideo) {
+              injectArticleCoverImage(selectedVideo.videoUrl);
+            }
+          }}
           style={{ padding: '9px 22px', borderRadius: 8, border: 'none', background: selectedId ? '#003087' : '#9ca3af', color: '#fff', fontSize: '0.875rem', fontWeight: 600, cursor: selectedId ? 'pointer' : 'not-allowed', opacity: selectedId ? 1 : 0.65 }}
         >
           Add Video
