@@ -18,30 +18,47 @@ function getTopOrigin(): string {
 }
 
 /**
- * Extracts the article ID from the Staffbase Studio URL in the parent window.
- * Handles common Staffbase URL patterns:
- *   /admin/content-management/edit/{id}
- *   /admin/articles/{id}
- *   /api/v3/contents/{id}
- *   etc.
+ * Extracts the article ID from the Staffbase Studio URL or parent window globals.
+ * Logs the full parent URL to help diagnose ID extraction issues.
  */
 function extractArticleId(): string | null {
   try {
-    const href = (window.top as Window).location.href;
+    const topWin = window.top as Window;
+    const href = topWin.location.href;
+    console.info('[KrogerVideoWidget] Parent URL:', href);
+
+    // URL patterns — ordered most-specific first
     const patterns = [
       /\/articles?\/([a-zA-Z0-9_-]{5,})/,
       /\/contents?\/([a-zA-Z0-9_-]{5,})/,
       /\/news\/([a-zA-Z0-9_-]{5,})/,
       /\/posts?\/([a-zA-Z0-9_-]{5,})/,
       /\/edit\/([a-zA-Z0-9_-]{5,})/,
-      /[?&]id=([a-zA-Z0-9_-]{5,})/,
+      /[?&](?:id|contentId|articleId)=([a-zA-Z0-9_-]{5,})/,
     ];
     for (const pattern of patterns) {
       const match = href.match(pattern);
-      if (match?.[1]) return match[1];
+      if (match?.[1]) {
+        console.info('[KrogerVideoWidget] Extracted article ID from URL:', match[1]);
+        return match[1];
+      }
     }
-    console.info('[KrogerVideoWidget] Parent URL:', href);
+
+    // Fall back to window-level variables Staffbase may expose
+    const win = topWin as any;
+    const fromGlobals =
+      win.__INITIAL_STATE__?.article?.id ||
+      win.__INITIAL_STATE__?.content?.id ||
+      win.articleData?.id               ||
+      win.contentData?.id               ||
+      win.__contentId__                 ||
+      win.__articleId__;
+    if (fromGlobals) {
+      console.info('[KrogerVideoWidget] Extracted article ID from window globals:', fromGlobals);
+      return String(fromGlobals);
+    }
   } catch {}
+  console.warn('[KrogerVideoWidget] Could not extract article ID — parent URL did not match any known pattern.');
   return null;
 }
 
@@ -130,8 +147,12 @@ async function fetchIframelyThumbnail(): Promise<string | null> {
 // ── Step 2: direct Staffbase article API call ──────────────────────────────
 
 /**
- * Immediately PATCHes the Staffbase article to set the cover/header image
- * as soon as "Add Video" is clicked — no need to wait for the user to save.
+ * Immediately calls the Staffbase article API to set the cover/header image
+ * as soon as "Add Video" is clicked.
+ *
+ * Tries PUT before PATCH because /api/articles/ returns 405 on PATCH.
+ * The 404 on /api/v3/contents/ means the extracted ID might be a slug —
+ * both forms are attempted so the console logs reveal which one works.
  */
 async function callStaffbaseArticleAPI(thumbUrl: string): Promise<boolean> {
   const origin = getTopOrigin();
@@ -139,7 +160,7 @@ async function callStaffbaseArticleAPI(thumbUrl: string): Promise<boolean> {
 
   const articleId = extractArticleId();
   if (!articleId) {
-    console.warn('[KrogerVideoWidget] Could not extract article ID from parent URL — will rely on fetch hook instead.');
+    console.warn('[KrogerVideoWidget] Could not extract article ID — will rely on fetch hook instead.');
     return false;
   }
 
@@ -150,28 +171,34 @@ async function callStaffbaseArticleAPI(thumbUrl: string): Promise<boolean> {
     media:       { url: thumbUrl, type: 'image' },
   };
 
-  const endpoints = [
-    `${origin}/api/articles/${articleId}`,
-    `${origin}/api/v3/contents/${articleId}`,
-    `${origin}/api/content/${articleId}`,
+  // PUT tried before PATCH — /api/articles/ returns 405 on PATCH
+  const attempts: Array<{ path: string; method: string }> = [
+    { path: `/api/articles/${articleId}`,    method: 'PUT'   },
+    { path: `/api/articles/${articleId}`,    method: 'PATCH' },
+    { path: `/api/v3/contents/${articleId}`, method: 'PATCH' },
+    { path: `/api/v3/contents/${articleId}`, method: 'PUT'   },
+    { path: `/api/content/${articleId}`,     method: 'PATCH' },
+    { path: `/api/content/${articleId}`,     method: 'PUT'   },
+    { path: `/api/news/${articleId}`,        method: 'PATCH' },
+    { path: `/api/posts/${articleId}`,       method: 'PATCH' },
   ];
 
-  for (const endpoint of endpoints) {
+  for (const { path, method } of attempts) {
+    const url = origin + path;
     try {
-      console.info('[KrogerVideoWidget] Calling Staffbase article API:', endpoint);
-      const res = await topFetch(endpoint, {
-        method: 'PATCH',
+      const res = await topFetch(url, {
+        method,
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
         body: JSON.stringify(payload),
       });
+      console.info('[KrogerVideoWidget]', method, path, '→', res.status);
       if (res.ok) {
-        console.info('[KrogerVideoWidget] ✅ Article cover image set via direct API call:', thumbUrl);
+        console.info('[KrogerVideoWidget] ✅ Article cover image set:', thumbUrl);
         return true;
       }
-      console.warn('[KrogerVideoWidget] Staffbase API returned', res.status, 'for', endpoint.replace(origin, ''));
     } catch (e) {
-      console.warn('[KrogerVideoWidget] Staffbase API error for', endpoint.replace(origin, ''), e);
+      console.warn('[KrogerVideoWidget] Error on', method, path, e);
     }
   }
 
