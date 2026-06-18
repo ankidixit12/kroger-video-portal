@@ -18,6 +18,45 @@ function getTopOrigin(): string {
 }
 
 /**
+ * Reads the CSRF token from the parent Staffbase window.
+ * Checks meta tags, cookies, and common window globals.
+ */
+function getCsrfToken(): string | null {
+  try {
+    const topWin = window.top as Window;
+    const topDoc = topWin.document;
+
+    // Meta tag (common in Rails/Django/Staffbase)
+    const meta = topDoc.querySelector(
+      'meta[name="csrf-token"], meta[name="_csrf_token"], meta[name="csrfToken"]'
+    );
+    if (meta?.getAttribute('content')) return meta.getAttribute('content');
+
+    // Cookies
+    const cookiePatterns = [
+      /XSRF-TOKEN=([^;]+)/,
+      /csrftoken=([^;]+)/,
+      /_csrf=([^;]+)/,
+      /staffbase[_-]csrf=([^;]+)/i,
+    ];
+    for (const pattern of cookiePatterns) {
+      const match = topDoc.cookie.match(pattern);
+      if (match?.[1]) return decodeURIComponent(match[1]);
+    }
+
+    // Window globals
+    const win = topWin as any;
+    const fromGlobals =
+      win.csrfToken      ||
+      win._csrfToken     ||
+      win.__CSRF_TOKEN__ ||
+      win.SB_CSRF_TOKEN;
+    if (fromGlobals) return String(fromGlobals);
+  } catch {}
+  return null;
+}
+
+/**
  * Extracts the article ID from the Staffbase Studio URL or parent window globals.
  * Logs the full parent URL to help diagnose ID extraction issues.
  */
@@ -183,12 +222,21 @@ async function callStaffbaseArticleAPI(thumbUrl: string): Promise<boolean> {
     { path: `/api/posts/${articleId}`,       method: 'PATCH' },
   ];
 
+  const csrfToken = getCsrfToken();
+  console.info('[KrogerVideoWidget] CSRF token:', csrfToken ?? '(none found)');
+
+  const baseHeaders: Record<string, string> = { 'Content-Type': 'application/json' };
+  if (csrfToken) {
+    baseHeaders['X-CSRF-Token']  = csrfToken;
+    baseHeaders['X-XSRF-TOKEN']  = csrfToken;
+  }
+
   for (const { path, method } of attempts) {
     const url = origin + path;
     try {
       const res = await topFetch(url, {
         method,
-        headers: { 'Content-Type': 'application/json' },
+        headers: baseHeaders,
         credentials: 'include',
         body: JSON.stringify(payload),
       });
