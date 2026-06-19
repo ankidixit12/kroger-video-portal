@@ -55,3 +55,21 @@ Description
 
 Explore what the Widget SDK / web component lifecycle exposes (e.g., accessToken, user claims, locale.
 Session Expiry & Re-auth Handling in the Widget
+
+
+curl --location --request PUT 'https://krogertest.staffbase.com/api/posts/6a34f73e8ca631260ef03dc0' \
+--header 'Content-Type: application/json' \
+--header 'Accept: application/json' \
+--header 'Authorization: Basic NmEwMzhmMWExMGIwZGQ3Mzc5NDI0Nzk2OnZHSkR3NSYhS2hoXm4uS3pwJkZxfjR+WXFyTkg5TiktTmxiOylJaFRuelNfZC0wM2FUMHlbMDBWcVRdN0gpdX4=' \
+--data '{
+    "contents": {
+        "en_US": {
+            "image": "https://cdn.qumucloud.com/asset/kroger-sbx.qumucloud.com/6X1uKGKZ5rEW1ft4PNTBar;wc=1920;hc=1080?delivery=INLINE&format=canonical&qedtoken=eyJhbGciOiJIUzI1NiJ9.eyJhdWQiOiJxdW11Y2xvdWQ6a3JvZ2VyLXNieCIsInN1YiI6IiQkT1JJR0lORE9XTkxPQUQkJCIsIm5iZiI6MTc4MTg1NDc3NywicXVtdTpxdWVyeUhhc2giOiI0NGEyMDUxZGM3N2NmNTAwNTc0MzIwOTk2MTBhMGJiODRjYjFkMTJjMDJkMTc4ZTA5NDY5OGQ5M2IzMzU3YWVmIiwicXVtdTpwYXRoSGFzaCI6ImIyN2U4MmFkM2U3OTM4YjQwOWI3MzBmYjI0NGJiYTE4NzdkOGZmOTViOTM4ODYwNmRhZjk4MGYwMmI1OTMxODgiLCJpc3MiOiJrcm9nZXItc2J4LmRzLnF1bXVjbG91ZC5jb20iLCJleHAiOjE3ODIxMTM5Nzd9.LnzWcZjGTEaewZaq3OY91FjERPMXC2gfFAYUmF2ggDY%22,
+            "teaser": "This teaser should be text only."
+        }
+    },
+    "notificationChannels": [
+        "email",
+        "push"
+    ]
+}'
