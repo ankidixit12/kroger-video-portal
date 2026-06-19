@@ -328,23 +328,41 @@ function hookTopFetch(thumbUrl: string, qumuThumbUrl?: string): void {
         if (id) {
           capturedDraftArticleId = id;
           console.info('[KrogerVideoWidget] Draft article ID captured from XHR GET:', id);
-          const putUrl  = `${origin}/api/posts/${id}`;
-          const payload = {
-            contents: { en_US: { image: qumuThumbUrl || thumbUrl, teaser: 'This teaser should be text only.' } },
-            notificationChannels: ['email', 'push'],
-          };
-          originalFetch(putUrl, {
-            method: 'PUT',
-            headers: {
-              'Content-Type': 'application/json',
-              'Accept': 'application/json',
-              'Authorization': 'Basic NmEwMzhmMWExMGIwZGQ3Mzc5NDI0Nzk2OnZHSkR3NSYhS2hoXm4uS3pwJkZxfjR+WXFyTkg5TiktTmxiOylJaFRuelNfZC0wM2FUMHlbMDBWcVRdN0gpdX4=',
-            },
-            credentials: 'include',
-            body: JSON.stringify(payload),
-          })
-            .then((res: Response) => console.info('[KrogerVideoWidget] PUT /api/posts/ →', res.status))
-            .catch((e: unknown) => console.warn('[KrogerVideoWidget] PUT /api/posts/ failed:', e));
+          const putUrl   = `${origin}/api/posts/${id}`;
+          const imageUrl = qumuThumbUrl || thumbUrl;
+          (async () => {
+            try {
+              const getRes = await originalFetch(putUrl, { credentials: 'include' });
+              console.info('[KrogerVideoWidget] GET (csrf probe) /api/posts/ →', getRes.status);
+              const csrfToken =
+                getRes.headers.get('X-CSRF-Token') ||
+                getRes.headers.get('X-XSRF-TOKEN') ||
+                getRes.headers.get('csrf-token')   ||
+                null;
+              const putHeaders: Record<string, string> = {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+              };
+              if (csrfToken) putHeaders['X-CSRF-Token'] = csrfToken;
+              const payload = {
+                contents: { en_US: { image: imageUrl, teaser: 'This teaser should be text only.' } },
+                notificationChannels: ['email', 'push'],
+              };
+              const putRes = await originalFetch(putUrl, {
+                method: 'PUT',
+                headers: putHeaders,
+                credentials: 'include',
+                body: JSON.stringify(payload),
+              });
+              console.info('[KrogerVideoWidget] PUT /api/posts/ →', putRes.status);
+              if (!putRes.ok) {
+                const errBody = await putRes.text().catch(() => '');
+                console.warn('[KrogerVideoWidget] PUT /api/posts/ error body:', errBody);
+              }
+            } catch (e) {
+              console.warn('[KrogerVideoWidget] PUT /api/posts/ failed:', e);
+            }
+          })();
         }
       }
       if (_url.startsWith(origin) && (_method === 'PATCH' || _method === 'PUT' || _method === 'POST')) {
