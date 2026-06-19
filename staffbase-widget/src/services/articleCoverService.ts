@@ -242,7 +242,7 @@ function extractIdFromUrl(url: string, origin: string): string | null {
 
 // ── Step 3: hook window.top.fetch (safety net on save) ────────────────────
 
-function hookTopFetch(thumbUrl: string): void {
+function hookTopFetch(thumbUrl: string, qumuThumbUrl?: string): void {
   let topWin: Window;
   try { topWin = window.top as Window; } catch { return; }
 
@@ -328,6 +328,23 @@ function hookTopFetch(thumbUrl: string): void {
         if (id) {
           capturedDraftArticleId = id;
           console.info('[KrogerVideoWidget] Draft article ID captured from XHR GET:', id);
+          const putUrl  = `${origin}/api/posts/${id}`;
+          const payload = {
+            contents: { en_US: { image: qumuThumbUrl || thumbUrl, teaser: 'This teaser should be text only.' } },
+            notificationChannels: ['email', 'push'],
+          };
+          originalFetch(putUrl, {
+            method: 'PUT',
+            headers: {
+              'Content-Type': 'application/json',
+              'Accept': 'application/json',
+              'Authorization': 'Basic NmEwMzhmMWExMGIwZGQ3Mzc5NDI0Nzk2OnZHSkR3NSYhS2hoXm4uS3pwJkZxfjR+WXFyTkg5TiktTmxiOylJaFRuelNfZC0wM2FUMHlbMDBWcVRdN0gpdX4=',
+            },
+            credentials: 'include',
+            body: JSON.stringify(payload),
+          })
+            .then((res: Response) => console.info('[KrogerVideoWidget] PUT /api/posts/ →', res.status))
+            .catch((e: unknown) => console.warn('[KrogerVideoWidget] PUT /api/posts/ failed:', e));
         }
       }
       if (_url.startsWith(origin) && (_method === 'PATCH' || _method === 'PUT' || _method === 'POST')) {
@@ -375,5 +392,5 @@ export async function injectArticleCoverImage(videoUrl: string, fallbackThumbnai
   directInjectArticleCover(thumbUrl);
 
   // Install fetch hook as safety net for article save/publish
-  hookTopFetch(thumbUrl);
+  hookTopFetch(thumbUrl, fallbackThumbnailUrl);
 }

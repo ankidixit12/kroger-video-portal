@@ -92,7 +92,7 @@ function mapKuluToVideoItem(k: any): VideoItem {
     expiryDate: safeString(k.withdrawOn || k.expiryDate || ''),
     withdrawOn: k.withdrawOn ? safeString(k.withdrawOn) : undefined,
     thumbnailColor: DIVISION_COLORS[division] || DIVISION_COLORS[author] || '#004990',
-    thumbnailUrl: k.thumbnail && k.thumbnail.url ? k.thumbnail.url : undefined,
+    thumbnailUrl: k.thumbnail ? (k.thumbnail.cdnUrl || k.thumbnail.url || undefined) : undefined,
     videoUrl: safeString(k.player || ''),
   };
 }
