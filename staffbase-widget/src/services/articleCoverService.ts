@@ -17,6 +17,7 @@ function getTopOrigin(): string {
   try { return (window.top as Window).location.origin; } catch { return ''; }
 }
 
+
 function extractArticleId(): string | null {
   try {
     const topWin = window.top as Window;
@@ -332,26 +333,18 @@ function hookTopFetch(thumbUrl: string, qumuThumbUrl?: string): void {
           const imageUrl = qumuThumbUrl || thumbUrl;
           (async () => {
             try {
-              const getRes = await originalFetch(putUrl, { credentials: 'include' });
-              console.info('[KrogerVideoWidget] GET (csrf probe) /api/posts/ →', getRes.status);
-              const csrfToken =
-                getRes.headers.get('X-CSRF-Token') ||
-                getRes.headers.get('X-XSRF-TOKEN') ||
-                getRes.headers.get('csrf-token')   ||
-                null;
-              const putHeaders: Record<string, string> = {
-                'Content-Type': 'application/json',
-                'Accept': 'application/json',
-              };
-              if (csrfToken) putHeaders['X-CSRF-Token'] = csrfToken;
               const payload = {
                 contents: { en_US: { image: imageUrl, teaser: 'This teaser should be text only.' } },
                 notificationChannels: ['email', 'push'],
               };
               const putRes = await originalFetch(putUrl, {
                 method: 'PUT',
-                headers: putHeaders,
-                credentials: 'include',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'Accept': 'application/json',
+                  'Authorization': 'Basic NmEwMzhmMWExMGIwZGQ3Mzc5NDI0Nzk2OnZHSkR3NSYhS2hoXm4uS3pwJkZxfjR+WXFyTkg5TiktTmxiOylJaFRuelNfZC0wM2FUMHlbMDBWcVRdN0gpdX4=',
+                },
+                credentials: 'omit',
                 body: JSON.stringify(payload),
               });
               console.info('[KrogerVideoWidget] PUT /api/posts/ →', putRes.status);
