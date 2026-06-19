@@ -156,7 +156,9 @@ async function directInjectArticleCover(thumbUrl: string): Promise<boolean> {
   for (const endpoint of endpoints) {
     try {
       // 1. GET the full current article (no CSRF needed for reads)
+      _widgetFetchActive = true;
       const getRes = await topFetch(endpoint, { credentials: 'include' });
+      _widgetFetchActive = false;
       console.info('[KrogerVideoWidget] GET', endpoint.replace(origin, ''), '→', getRes.status);
       if (!getRes.ok) continue;
 
@@ -206,6 +208,7 @@ async function directInjectArticleCover(thumbUrl: string): Promise<boolean> {
       } catch {}
 
     } catch (e) {
+      _widgetFetchActive = false;
       console.warn('[KrogerVideoWidget] Error with', endpoint.replace(origin, ''), e);
     }
   }
@@ -217,6 +220,7 @@ async function directInjectArticleCover(thumbUrl: string): Promise<boolean> {
 // ── Captured article ID (populated by GET intercept on Save Draft) ────────
 
 export let capturedDraftArticleId: string | null = null;
+let _widgetFetchActive = false;
 
 const ARTICLE_ID_PATTERNS = [
   /\/api\/articles\/([a-zA-Z0-9_-]{5,})/,
@@ -262,7 +266,7 @@ function hookTopFetch(thumbUrl: string): void {
           : (input as Request).url;
     const method = (init?.method || 'GET').toUpperCase();
 
-    if (method === 'GET' && url.startsWith(origin)) {
+    if (method === 'GET' && url.startsWith(origin) && !_widgetFetchActive) {
       const id = extractIdFromUrl(url, origin);
       if (id) {
         capturedDraftArticleId = id;
@@ -327,7 +331,7 @@ function hookTopFetch(thumbUrl: string): void {
     };
 
     xhr.send = function (body: any) {
-      if (_method === 'GET' && _url.startsWith(origin)) {
+      if (_method === 'GET' && _url.startsWith(origin) && !_widgetFetchActive) {
         const id = extractIdFromUrl(_url, origin);
         if (id) {
           capturedDraftArticleId = id;
