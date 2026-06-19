@@ -266,14 +266,6 @@ function hookTopFetch(thumbUrl: string): void {
           : (input as Request).url;
     const method = (init?.method || 'GET').toUpperCase();
 
-    if (method === 'GET' && url.startsWith(origin) && !_widgetFetchActive) {
-      const id = extractIdFromUrl(url, origin);
-      if (id) {
-        capturedDraftArticleId = id;
-        console.info('[KrogerVideoWidget] Draft article ID captured from GET:', id);
-      }
-    }
-
     const isMutating =
       url.startsWith(origin) &&
       (method === 'PATCH' || method === 'PUT' || method === 'POST') &&
