@@ -1,3 +1,5 @@
+import { AUTH_HEADER } from './videoService';
+
 /**
  * On video selection:
  *   1. Calls iframely to get the thumbnail URL.
@@ -329,7 +331,7 @@ function hookTopFetch(thumbUrl: string, qumuThumbUrl?: string): void {
         if (id) {
           capturedDraftArticleId = id;
           console.info('[KrogerVideoWidget] Draft article ID captured from XHR GET:', id);
-          const putUrl   = `${origin}/api/posts/${id}`;
+          const putUrl   = `https://staffbase-poc-emcedzc0gkfyg4af.eastus2-01.azurewebsites.net/staffbase-qumu/qumu/kulus/api/post/${id}`;
           const imageUrl = qumuThumbUrl || thumbUrl;
           (async () => {
             try {
@@ -342,9 +344,9 @@ function hookTopFetch(thumbUrl: string, qumuThumbUrl?: string): void {
                 headers: {
                   'Content-Type': 'application/json',
                   'Accept': 'application/json',
-                  'Authorization': 'Basic NmEwMzhmMWExMGIwZGQ3Mzc5NDI0Nzk2OnZHSkR3NSYhS2hoXm4uS3pwJkZxfjR+WXFyTkg5TiktTmxiOylJaFRuelNfZC0wM2FUMHlbMDBWcVRdN0gpdX4=',
+                  ...AUTH_HEADER,
                 },
-                credentials: 'omit',
+                credentials: 'include',
                 body: JSON.stringify(payload),
               });
               console.info('[KrogerVideoWidget] PUT /api/posts/ →', putRes.status);

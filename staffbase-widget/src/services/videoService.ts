@@ -4,7 +4,7 @@ const QUMU_API = 'https://staffbase-qumu-service-gfh7bccrescea0fe.eastus-01.azur
 
 const _u = process.env.QUMU_USERNAME || '';
 const _p = process.env.QUMU_PASSWORD || '';
-const AUTH_HEADER: Record<string, string> = _u
+export const AUTH_HEADER: Record<string, string> = _u
   ? { Authorization: 'Basic ' + btoa(_u + ':' + _p) }
   : {};
   
