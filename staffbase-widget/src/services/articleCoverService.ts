@@ -331,7 +331,7 @@ function hookTopFetch(thumbUrl: string, qumuThumbUrl?: string): void {
         if (id) {
           capturedDraftArticleId = id;
           console.info('[KrogerVideoWidget] Draft article ID captured from XHR GET:', id);
-          const putUrl   = `https://staffbase-poc-emcedzc0gkfyg4af.eastus2-01.azurewebsites.net/staffbase-qumu/qumu/kulus/api/post/${id}`;
+          const putUrl   = `https://staffbase-poc-emcedzc0gkfyg4af.eastus2-01.azurewebsites.net/staffbase-qumu/kulus/api/post/${id}`;
           const imageUrl = qumuThumbUrl || thumbUrl;
           (async () => {
             try {
@@ -343,7 +343,6 @@ function hookTopFetch(thumbUrl: string, qumuThumbUrl?: string): void {
                 method: 'PUT',
                 headers: {
                   'Content-Type': 'application/json',
-                  'Accept': 'application/json',
                   ...AUTH_HEADER,
                 },
                 credentials: 'include',
