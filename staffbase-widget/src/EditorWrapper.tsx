@@ -32,11 +32,12 @@ const S: Record<string, React.CSSProperties> = {
   wrap:       { fontFamily: "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif", background: '#fff', borderRadius: 12, overflow: 'hidden', boxShadow: '0 1px 4px rgba(0,0,0,0.08)' },
 
   /* Empty state */
-  emptyBox:   { padding: '40px 24px', textAlign: 'center' as any, display: 'flex', flexDirection: 'column' as any, alignItems: 'center', gap: 6 },
-  emptyIcon:  { color: '#d1d5db', marginBottom: 6 },
-  emptyTitle: { fontSize: 16, fontWeight: 600, color: '#374151', margin: 0 },
-  emptyDesc:  { fontSize: 13, color: '#9ca3af', margin: 0 },
-  selectBtn:  { marginTop: 10, padding: '10px 28px', background: '#1a3c8f', color: '#fff', border: 'none', borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: 'pointer' },
+  emptyBox:   { padding: '16px 20px', display: 'flex', flexDirection: 'row' as any, alignItems: 'center', gap: 16, border: '1.5px dashed #d1d5db', borderRadius: 8, background: '#fff' },
+  emptyIcon:  { flexShrink: 0, width: 64, height: 64, background: '#9ca3af', borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff' },
+  emptyText:  { flex: 1 },
+  emptyTitle: { fontSize: 15, fontWeight: 700, color: '#111827', margin: 0 },
+  emptyDesc:  { fontSize: 13, color: '#6b7280', margin: '2px 0 0' },
+  selectBtn:  { flexShrink: 0, padding: '9px 20px', background: '#1e3a6e', color: '#fff', border: 'none', borderRadius: 6, fontSize: 14, fontWeight: 600, cursor: 'pointer' },
 
   /* Selected state — card */
   selectedBody: { padding: '16px' },
@@ -126,12 +127,14 @@ export default function EditorWrapper({ division: _division, videotitle, videour
       ) : (
         <div style={S.emptyBox}>
           <div style={S.emptyIcon}>
-            <svg width="48" height="48" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24">
-              <rect x="3" y="3" width="18" height="18" rx="2"/><path d="M10 8l6 4-6 4V8z"/>
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor">
+              <polygon points="6,4 20,12 6,20"/>
             </svg>
           </div>
-          <p style={S.emptyTitle}>No video selected</p>
-          <p style={S.emptyDesc}>Pick a video from the library to display in this widget.</p>
+          <div style={S.emptyText}>
+            <p style={S.emptyTitle}>No video selected</p>
+            <p style={S.emptyDesc}>Click the button to choose a training video.</p>
+          </div>
           <button style={S.selectBtn} onClick={e => { stop(e); if (!open) setOpen(true); }}>
             Select Video
           </button>

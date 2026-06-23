@@ -105,38 +105,6 @@ function injectThumbnailIntoPayload(payload: any, thumbUrl: string): void {
   }
 }
 
-// ── Step 1: iframely call ──────────────────────────────────────────────────
-
-async function fetchIframelyThumbnail(videoUrl: string): Promise<string | null> {
-  try {
-    const origin   = getTopOrigin();
-    if (!origin) return null;
-    const encoded  = encodeURIComponent(videoUrl);
-    const endpoint = `${origin}/api/iframely?url=${encoded}&nowrap=on&callback=`;
-    console.info('[KrogerVideoWidget] iframely call with URL:', videoUrl);
-    console.info('[KrogerVideoWidget] iframely endpoint:', endpoint);
-    const res = await topFetch(endpoint, { credentials: 'include' });
-    if (!res.ok) { console.warn('[KrogerVideoWidget] iframely returned', res.status); return null; }
-    const text = await res.text();
-    let data: any;
-    try { data = JSON.parse(text); }
-    catch {
-      const s = text.replace(/^\s*\w+\s*\(/, '').replace(/\)\s*;?\s*$/, '');
-      data = JSON.parse(s);
-    }
-    const thumb =
-      data?.links?.thumbnail?.[0]?.href ||
-      data?.links?.icon?.[0]?.href      ||
-      data?.meta?.thumbnail_url         ||
-      data?.thumbnail_url               ||
-      null;
-    console.info('[KrogerVideoWidget] iframely thumbnail:', thumb);
-    return thumb;
-  } catch (e) {
-    console.warn('[KrogerVideoWidget] iframely failed:', e);
-    return null;
-  }
-}
 
 // ── Step 2: GET article → inject thumbnail → PUT back ─────────────────────
 
@@ -386,13 +354,12 @@ function hookTopFetch(thumbUrl: string, qumuThumbUrl?: string): void {
 
 // ── Public entry point ─────────────────────────────────────────────────────
 
-export async function injectArticleCoverImage(videoUrl: string, fallbackThumbnailUrl?: string): Promise<void> {
+export function injectArticleCoverImage(videoUrl: string, fallbackThumbnailUrl?: string): void {
   if (!getTopOrigin() || !videoUrl) return;
 
   console.info('[KrogerVideoWidget] Starting cover image injection for video:', videoUrl);
   
-  const iframelyThumb = await fetchIframelyThumbnail(videoUrl);
-  const thumbUrl = iframelyThumb || fallbackThumbnailUrl;
+  const thumbUrl = fallbackThumbnailUrl;
 
   if (!thumbUrl) {
     console.warn('[KrogerVideoWidget] No thumbnail URL available, skipping.');
