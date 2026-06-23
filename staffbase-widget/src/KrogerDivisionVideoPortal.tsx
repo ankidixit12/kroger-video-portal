@@ -25,6 +25,17 @@ function escHtml(s: string): string {
   return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
+function isExpired(iso?: string): boolean {
+  if (!iso) return false;
+  return new Date(iso).getTime() < Date.now();
+}
+
+function isExpiringSoon(iso?: string): boolean {
+  if (!iso) return false;
+  const ms = new Date(iso).getTime() - Date.now();
+  return ms > 0 && ms / 86400000 < 90;
+}
+
 function highlight(text: string, q: string): string {
   if (!q) return escHtml(text);
   const esc = q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -125,13 +136,35 @@ function VideoCard({ video, query, selected, onSelect }: VideoCardProps) {
           {[
             { label: 'Author',    value: video.author || '—' },
             { label: 'Published', value: formatDate(video.publishedAt) },
-            { label: 'Expires',   value: formatDate(video.withdrawOn) },
           ].map(({ label, value }) => (
             <div key={label} style={{ display: 'flex', alignItems: 'baseline', gap: 8, fontSize: 11.5 }}>
               <span style={{ color: '#6b7280', minWidth: 64, flexShrink: 0 }}>{label}</span>
               <span style={{ color: '#111827', fontWeight: 500 }}>{value}</span>
             </div>
           ))}
+          {/* Expires row — three states: expired / expiring-soon / normal */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 11.5 }}>
+            <span style={{ color: '#6b7280', minWidth: 64, flexShrink: 0 }}>Expires</span>
+            {isExpired(video.withdrawOn) ? (
+              <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: '#fef2f2', color: '#dc2626', fontSize: 11, fontWeight: 600, padding: '2px 7px', borderRadius: 20, whiteSpace: 'nowrap' as const }}>
+                  <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#dc2626', flexShrink: 0 }} />
+                  Expired
+                </span>
+                <span style={{ color: '#dc2626', fontWeight: 600 }}>{formatDate(video.withdrawOn)}</span>
+              </span>
+            ) : isExpiringSoon(video.withdrawOn) ? (
+              <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: '#fff7ed', color: '#d97706', fontSize: 11, fontWeight: 600, padding: '2px 7px', borderRadius: 20, whiteSpace: 'nowrap' as const }}>
+                  <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#d97706', flexShrink: 0 }} />
+                  Expiring soon
+                </span>
+                <span style={{ color: '#d97706', fontWeight: 600 }}>{formatDate(video.withdrawOn)}</span>
+              </span>
+            ) : (
+              <span style={{ color: '#111827', fontWeight: 500 }}>{formatDate(video.withdrawOn)}</span>
+            )}
+          </div>
         </div>
       </div>
     </div>

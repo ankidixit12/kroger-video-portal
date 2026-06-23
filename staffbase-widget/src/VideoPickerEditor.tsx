@@ -14,10 +14,13 @@ function isExpired(d: string): boolean {
   return t < Date.now();
 }
 
+function pad2Date(n: number): string { return n < 10 ? '0' + n : String(n); }
+
 function fmtDate(d: string): string {
   if (!d) return '—';
   try {
-    return new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric' }).format(new Date(d));
+    const dt = new Date(d);
+    return pad2Date(dt.getMonth() + 1) + '/' + pad2Date(dt.getDate()) + '/' + dt.getFullYear();
   } catch {
     return d;
   }

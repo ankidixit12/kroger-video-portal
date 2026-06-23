@@ -14,10 +14,13 @@ interface Props {
 
 function stop(e: React.SyntheticEvent) { e.stopPropagation(); }
 
+function pad2(n: number): string { return n < 10 ? '0' + n : String(n); }
+
 function fmtDate(d: string): string {
   if (!d) return '';
   try {
-    return new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric' }).format(new Date(d));
+    const dt = new Date(d);
+    return pad2(dt.getMonth() + 1) + '/' + pad2(dt.getDate()) + '/' + dt.getFullYear();
   } catch {
     return d;
   }

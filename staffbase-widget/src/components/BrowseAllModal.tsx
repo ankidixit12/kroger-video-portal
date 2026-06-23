@@ -8,13 +8,12 @@ function extractYouTubeId(url: string): string | null {
   return m ? m[1] : null;
 }
 
+function pad2(n: number): string { return n < 10 ? '0' + n : String(n); }
+
 function formatDate(iso: string): string {
   try {
-    return new Intl.DateTimeFormat('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
-    }).format(new Date(iso));
+    const d = new Date(iso);
+    return pad2(d.getMonth() + 1) + '/' + pad2(d.getDate()) + '/' + d.getFullYear();
   } catch {
     return iso;
   }
