@@ -96,7 +96,7 @@ const blockDefinition: BlockDefinition = {
   blockLevel: 'block',
   configurationSchema,
   uiSchema,
-  label: 'Video selector widget',
+  label: 'Kroger Video',
   iconUrl: icon,
 };
 
