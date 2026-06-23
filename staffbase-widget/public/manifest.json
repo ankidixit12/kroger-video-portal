@@ -1,0 +1,34 @@
+{
+  "id": "kroger-division-video-v12",
+  "version": "1.0.0",
+  "name": "Kroger Division Video Selector",
+  "description": "Video picker widget for Kroger division videos powered by Qumu. Lets editors browse, search, and embed division-specific videos directly inside Staffbase articles.",
+  "author": "Kroger",
+  "blocks": [
+    {
+      "id": "kroger-division-video-v12",
+      "name": "Kroger Division Video Selector",
+      "source": "kroger-video-widget.js",
+      "configurationSchema": {
+        "$schema": "http://json-schema.org/draft-07/schema",
+        "type": "object",
+        "properties": {
+          "division":      { "type": "string", "title": "Division"    },
+          "videotitle":    { "type": "string", "title": "Video Title" },
+          "videourl":      { "type": "string", "title": "Video URL"   },
+          "videoduration": { "type": "string", "title": "Duration"    },
+          "videoexpiry":   { "type": "string", "title": "Expiry Date" },
+          "videothumb":    { "type": "string", "title": "Thumbnail"   }
+        }
+      },
+      "uiSchema": {
+        "division":      { "ui:widget": "hidden" },
+        "videotitle":    { "ui:widget": "hidden" },
+        "videourl":      { "ui:widget": "hidden" },
+        "videoduration": { "ui:widget": "hidden" },
+        "videoexpiry":   { "ui:widget": "hidden" },
+        "videothumb":    { "ui:widget": "hidden" }
+      }
+    }
+  ]
+}
