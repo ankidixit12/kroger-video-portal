@@ -229,7 +229,7 @@ const KrogerDivisionVideoPortal: React.FC<Props> = ({ widgettitle }) => {
 
   useEffect(() => { loadVideos(category); }, [category]);
 
-  /* Filter on search — debounced 300 ms */
+  /* Filter on search — debounced 100 ms */
   const onSearch = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const raw = e.target.value;
     if (debounceRef.current) clearTimeout(debounceRef.current);
@@ -245,7 +245,7 @@ const KrogerDivisionVideoPortal: React.FC<Props> = ({ widgettitle }) => {
             (v.category|| '').toLowerCase().includes(q))
         : allVideos
       );
-    }, 300);
+    }, 100);
   }, [allVideos]);
 
   const pageVideos = filtered.slice((page - 1) * ITEMS_PER_PAGE, page * ITEMS_PER_PAGE);

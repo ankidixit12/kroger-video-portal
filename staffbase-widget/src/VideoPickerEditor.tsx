@@ -89,11 +89,12 @@ export default function VideoPickerEditor({ onSelect, onCancel }: Props) {
   const [videos,   setVideos]   = useState<VideoItem[]>([]);
   const [loading,  setLoading]  = useState(true);
   const [apiError, setApiError] = useState(false);
-  const [filter,   setFilter]   = useState('');   // 'div:Dallas' | 'loc:Midwest' | ''
-  const [search,   setSearch]   = useState('');
-  const [page,     setPage]     = useState(1);
-  const [selVideo, setSelVideo]   = useState<VideoItem | null>(null);
-  const [hoveredId, setHoveredId] = useState<string | number | null>(null);
+  const [filter,      setFilter]      = useState('');   // 'div:Dallas' | 'loc:Midwest' | ''
+  const [search,      setSearch]      = useState('');   // debounced — used for filtering
+  const [inputValue,  setInputValue]  = useState('');   // immediate — drives the input value
+  const [page,        setPage]        = useState(1);
+  const [selVideo,    setSelVideo]    = useState<VideoItem | null>(null);
+  const [hoveredId,   setHoveredId]   = useState<string | number | null>(null);
   const searchDebounce = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   function load() {
@@ -177,9 +178,9 @@ export default function VideoPickerEditor({ onSelect, onCancel }: Props) {
           <input
             type="text"
             placeholder="Search videos…"
-            value={search}
+            value={inputValue}
             style={S.searchInput}
-            onChange={e => { stop(e); const v = e.target.value; if (searchDebounce.current) clearTimeout(searchDebounce.current); searchDebounce.current = setTimeout(() => { setSearch(v); setPage(1); }, 300); }}
+            onChange={e => { stop(e); const v = e.target.value; setInputValue(v); if (searchDebounce.current) clearTimeout(searchDebounce.current); searchDebounce.current = setTimeout(() => { setSearch(v); setPage(1); }, 150); }}
             onClick={stop}
             onMouseDown={stop}
             onFocus={stop}
