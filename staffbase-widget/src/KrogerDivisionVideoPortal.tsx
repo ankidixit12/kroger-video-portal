@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { VideoItem, fetchVideos } from './services/videoService';
 import { injectArticleCoverImage } from './services/articleCoverService';
 import apiUnavailableIcon from '../../public/assets/Icon (1).svg';
@@ -217,32 +217,35 @@ const KrogerDivisionVideoPortal: React.FC<Props> = ({ widgettitle }) => {
   const [apiError,   setApiError]   = useState(false);
   const [selectedId, setSelectedId] = useState<string | number | null>(null);
   const [page,       setPage]       = useState(1);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   /* Load from API */
-  useEffect(() => {
+  function loadVideos(cat: string) {
     setLoading(true); setQuery(''); setApiError(false); setPage(1);
-    fetchVideos({ category: category || undefined })
-      .then(data => {
-        setAllVideos(data);
-        setFiltered(data);
-        setLoading(false);
-      })
+    fetchVideos({ category: cat || undefined })
+      .then(data => { setAllVideos(data); setFiltered(data); setLoading(false); })
       .catch(() => { setAllVideos([]); setFiltered([]); setApiError(true); setLoading(false); });
-  }, [category]);
+  }
 
-  /* Filter on search */
+  useEffect(() => { loadVideos(category); }, [category]);
+
+  /* Filter on search — debounced 300 ms */
   const onSearch = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const q = e.target.value.trim().toLowerCase();
-    setQuery(q);
-    setPage(1);
-    setFiltered(q
-      ? allVideos.filter(v =>
-          (v.title   || '').toLowerCase().includes(q) ||
-          (v.series  || '').toLowerCase().includes(q) ||
-          (v.author  || '').toLowerCase().includes(q) ||
-          (v.category|| '').toLowerCase().includes(q))
-      : allVideos
-    );
+    const raw = e.target.value;
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => {
+      const q = raw.trim().toLowerCase();
+      setQuery(q);
+      setPage(1);
+      setFiltered(q
+        ? allVideos.filter(v =>
+            (v.title   || '').toLowerCase().includes(q) ||
+            (v.series  || '').toLowerCase().includes(q) ||
+            (v.author  || '').toLowerCase().includes(q) ||
+            (v.category|| '').toLowerCase().includes(q))
+        : allVideos
+      );
+    }, 300);
   }, [allVideos]);
 
   const pageVideos = filtered.slice((page - 1) * ITEMS_PER_PAGE, page * ITEMS_PER_PAGE);
@@ -305,9 +308,17 @@ const KrogerDivisionVideoPortal: React.FC<Props> = ({ widgettitle }) => {
         {/* API error */}
         {!loading && apiError && (
           <div style={{ padding: '64px 24px', textAlign: 'center' }}>
-            <img src={apiUnavailableIcon} alt="Video library unavailable" style={{ width: 52, height: 52, marginBottom: 16, display: 'block', margin: '0 auto 16px' }} />
-            <p style={{ fontSize: '1rem', fontWeight: 500, color: '#6b7280', margin: '0 0 4px' }}>No video selected</p>
+            <img src={apiUnavailableIcon} alt="Video library unavailable" style={{ width: 52, height: 52, display: 'block', margin: '0 auto 16px' }} />
+            <p style={{ fontSize: '1rem', fontWeight: 500, color: '#6b7280', margin: '0 0 4px' }}>Something went wrong</p>
             <span style={{ fontSize: '0.85rem', color: '#9ca3af' }}>The video library is currently unavailable.</span>
+            <div style={{ marginTop: 20 }}>
+              <button
+                onClick={() => loadVideos(category)}
+                style={{ padding: '9px 28px', borderRadius: 24, border: 'none', background: '#074085', color: '#fff', fontSize: '0.875rem', fontWeight: 600, cursor: 'pointer' }}
+              >
+                Try Again
+              </button>
+            </div>
           </div>
         )}
 

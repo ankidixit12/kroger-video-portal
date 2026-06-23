@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { fetchVideos, VideoItem } from './services/videoService';
 
 const PAGE_SIZE = 32;
@@ -94,6 +94,7 @@ export default function VideoPickerEditor({ onSelect, onCancel }: Props) {
   const [page,     setPage]     = useState(1);
   const [selVideo, setSelVideo]   = useState<VideoItem | null>(null);
   const [hoveredId, setHoveredId] = useState<string | number | null>(null);
+  const searchDebounce = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   function load() {
     setLoading(true);
@@ -178,7 +179,7 @@ export default function VideoPickerEditor({ onSelect, onCancel }: Props) {
             placeholder="Search videos…"
             value={search}
             style={S.searchInput}
-            onChange={e => { stop(e); setSearch(e.target.value); setPage(1); }}
+            onChange={e => { stop(e); const v = e.target.value; if (searchDebounce.current) clearTimeout(searchDebounce.current); searchDebounce.current = setTimeout(() => { setSearch(v); setPage(1); }, 300); }}
             onClick={stop}
             onMouseDown={stop}
             onFocus={stop}
