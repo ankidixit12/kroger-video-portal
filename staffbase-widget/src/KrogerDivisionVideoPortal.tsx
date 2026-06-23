@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { VideoItem, fetchVideos } from './services/videoService';
 import { injectArticleCoverImage } from './services/articleCoverService';
+import apiUnavailableIcon from '../../public/assets/Icon (1).svg';
+import noVideosIcon from '../../public/assets/Icon (2).svg';
 
 const ITEMS_PER_PAGE = 32;
 
@@ -191,7 +193,6 @@ const KrogerDivisionVideoPortal: React.FC<Props> = ({ widgettitle }) => {
         setAllVideos(data);
         setFiltered(data);
         setLoading(false);
-        if (data.length === 0) setApiError(true);
       })
       .catch(() => { setAllVideos([]); setFiltered([]); setApiError(true); setLoading(false); });
   }, [category]);
@@ -271,16 +272,22 @@ const KrogerDivisionVideoPortal: React.FC<Props> = ({ widgettitle }) => {
         {/* API error */}
         {!loading && apiError && (
           <div style={{ padding: '64px 24px', textAlign: 'center' }}>
-            <svg width="52" height="52" fill="none" stroke="#d1d5db" strokeWidth="1.5" viewBox="0 0 24 24" style={{ marginBottom: 16, display: 'block', margin: '0 auto 16px' }}>
-              <rect x="3" y="3" width="18" height="18" rx="2"/><path d="M10 8l6 4-6 4V8z"/>
-            </svg>
+            <img src={apiUnavailableIcon} alt="Video library unavailable" style={{ width: 52, height: 52, marginBottom: 16, display: 'block', margin: '0 auto 16px' }} />
             <p style={{ fontSize: '1rem', fontWeight: 500, color: '#6b7280', margin: '0 0 4px' }}>No video selected</p>
             <span style={{ fontSize: '0.85rem', color: '#9ca3af' }}>The video library is currently unavailable.</span>
           </div>
         )}
 
+        {!loading && !apiError && allVideos.length === 0 && (
+          <div style={{ padding: '64px 24px', textAlign: 'center' }}>
+            <img src={noVideosIcon} alt="No videos available" style={{ width: 52, height: 52, marginBottom: 16, display: 'block', margin: '0 auto 16px' }} />
+            <p style={{ fontSize: '1rem', fontWeight: 500, color: '#6b7280', margin: '0 0 4px' }}>No videos available</p>
+            <span style={{ fontSize: '0.85rem', color: '#9ca3af' }}>There are no videos in the library.</span>
+          </div>
+        )}
+
         {/* No search results */}
-        {!loading && !apiError && filtered.length === 0 && query && (
+        {!loading && !apiError && allVideos.length > 0 && filtered.length === 0 && query && (
           <div style={{ padding: '48px 24px', textAlign: 'center', color: '#9ca3af', fontSize: '0.9rem' }}>
             No videos match your search.
           </div>
