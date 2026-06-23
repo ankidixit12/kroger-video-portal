@@ -1,13 +1,13 @@
 {
   "id": "kroger-division-video-v12",
   "version": "1.0.0",
-  "name": "Kroger Division Video Selector",
+  "name": "Kroger Video",
   "description": "Video picker widget for Kroger division videos powered by Qumu. Lets editors browse, search, and embed division-specific videos directly inside Staffbase articles.",
   "author": "Kroger",
   "blocks": [
     {
       "id": "kroger-division-video-v12",
-      "name": "Kroger Division Video Selector",
+      "name": "Kroger Video",
       "source": "kroger-video-widget.js",
       "configurationSchema": {
         "$schema": "http://json-schema.org/draft-07/schema",
