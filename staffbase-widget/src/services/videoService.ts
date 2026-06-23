@@ -122,6 +122,6 @@ export async function fetchVideos(params?: FetchParams): Promise<VideoItem[]> {
   } catch (err) {
     clearTimeout(timer);
     console.warn('[VideoService] API unavailable', err);
-    return [];
+    throw err;
   }
 }
