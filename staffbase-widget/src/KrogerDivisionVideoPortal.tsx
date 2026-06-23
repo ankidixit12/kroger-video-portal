@@ -325,7 +325,7 @@ const KrogerDivisionVideoPortal: React.FC<Props> = ({ widgettitle }) => {
               injectArticleCoverImage(selectedVideo.videoUrl);
             }
           }}
-          style={{ padding: '9px 22px', borderRadius: 8, border: 'none', background: selectedId ? '#003087' : '#9ca3af', color: '#fff', fontSize: '0.875rem', fontWeight: 600, cursor: selectedId ? 'pointer' : 'not-allowed', opacity: selectedId ? 1 : 0.65 }}
+          style={{ padding: '9px 22px', borderRadius: 8, border: 'none', background: selectedId ? '#074085' : '#9ca3af', color: '#fff', fontSize: '0.875rem', fontWeight: 600, cursor: selectedId ? 'pointer' : 'not-allowed', opacity: selectedId ? 1 : 0.65 }}
         >
           Add Video
         </button>

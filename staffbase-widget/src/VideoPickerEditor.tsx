@@ -66,11 +66,11 @@ const S: Record<string, React.CSSProperties> = {
   metaVal:    { fontWeight: 600, color: '#374151' },
   metaExp:    { fontWeight: 600, color: '#dc2626' },
   pagination: { display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 },
-  pgBtn:      { width: 28, height: 28, border: '1.5px solid #d1d5db', borderRadius: '50%', background: '#fff', fontSize: 12, color: '#374151', cursor: 'pointer', padding: 0 },
+  pgBtn:      { width: 28, height: 28, border: 'none', borderRadius: '50%', background: '#fff', fontSize: 12, color: '#374151', cursor: 'pointer', padding: 0 },
   pgActive:   { width: 28, height: 28, border: '1.5px solid #003087', borderRadius: '50%', background: '#003087', fontSize: 12, color: '#fff', fontWeight: 700, cursor: 'pointer', padding: 0 },
   footer:     { display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 10, padding: '12px 18px 14px', borderTop: '1px solid #e5e7eb', flexShrink: 0 },
   btnCancel:  { padding: '8px 20px', borderRadius: 6, fontSize: 13, fontWeight: 600, cursor: 'pointer', background: '#fff', border: '1.5px solid #1a3c8f', color: '#1a3c8f', whiteSpace: 'nowrap' as any },
-  btnAdd:     { padding: '8px 20px', borderRadius: 6, fontSize: 13, fontWeight: 600, cursor: 'pointer', background: '#1a3c8f', border: '1.5px solid #1a3c8f', color: '#fff', whiteSpace: 'nowrap' as any },
+  btnAdd:     { padding: '8px 20px', borderRadius: 6, fontSize: 13, fontWeight: 600, cursor: 'pointer', background: '#074085', border: '1.5px solid #074085', color: '#fff', whiteSpace: 'nowrap' as any },
   btnAddDis:  { padding: '8px 20px', borderRadius: 5, fontSize: 13, fontWeight: 600, cursor: 'default', background: '#074085', border: '1.5px solid #074085', color: '#fff', opacity: 0.5, whiteSpace: 'nowrap' as any },
   centeredState: { flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' },
   emptyBox:   { padding: '48px 20px', textAlign: 'center' as any, color: '#9ca3af', fontSize: 13, display: 'flex', flexDirection: 'column' as any, alignItems: 'center', gap: 12 },
@@ -79,7 +79,7 @@ const S: Record<string, React.CSSProperties> = {
   errIcon:    { width: 80, height: 80, borderRadius: 16777200, background: '#FEF2F2', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 20, color: '#ef4444' },
   errTitle:   { fontSize: 18, fontWeight: 700, color: '#111827', marginBottom: 10 },
   errDesc:    { fontSize: 14, color: '#6b7280', marginBottom: 24, lineHeight: 1.6 },
-  btnRetry:   { display: 'inline-block', width: 'auto', padding: '10px 32px', borderRadius: 24, border: 'none', background: '#003087', color: '#fff', fontSize: 14, fontWeight: 600, cursor: 'pointer', boxSizing: 'border-box' as any },
+  btnRetry:   { display: 'inline-block', width: 'auto', padding: '10px 32px', borderRadius: 24, border: 'none', background: '#074085', color: '#fff', fontSize: 14, fontWeight: 600, cursor: 'pointer', boxSizing: 'border-box' as any },
 };
 
 export default function VideoPickerEditor({ onSelect, onCancel }: Props) {
