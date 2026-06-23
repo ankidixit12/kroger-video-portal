@@ -66,18 +66,20 @@ const S: Record<string, React.CSSProperties> = {
   metaVal:    { fontWeight: 600, color: '#374151' },
   metaExp:    { fontWeight: 600, color: '#dc2626' },
   pagination: { display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 },
-  pgBtn:      { minWidth: 28, height: 28, border: '1.5px solid #d1d5db', borderRadius: 6, background: '#fff', fontSize: 12, color: '#374151', cursor: 'pointer', padding: '0 6px' },
-  pgActive:   { minWidth: 28, height: 28, border: '1.5px solid #003087', borderRadius: 6, background: '#003087', fontSize: 12, color: '#fff', fontWeight: 700, cursor: 'pointer', padding: '0 6px' },
+  pgBtn:      { width: 28, height: 28, border: '1.5px solid #d1d5db', borderRadius: '50%', background: '#fff', fontSize: 12, color: '#374151', cursor: 'pointer', padding: 0 },
+  pgActive:   { width: 28, height: 28, border: '1.5px solid #003087', borderRadius: '50%', background: '#003087', fontSize: 12, color: '#fff', fontWeight: 700, cursor: 'pointer', padding: 0 },
   footer:     { display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 10, padding: '12px 18px 14px', borderTop: '1px solid #e5e7eb', flexShrink: 0 },
   btnCancel:  { padding: '8px 20px', borderRadius: 6, fontSize: 13, fontWeight: 600, cursor: 'pointer', background: '#fff', border: '1.5px solid #1a3c8f', color: '#1a3c8f', whiteSpace: 'nowrap' as any },
   btnAdd:     { padding: '8px 20px', borderRadius: 6, fontSize: 13, fontWeight: 600, cursor: 'pointer', background: '#1a3c8f', border: '1.5px solid #1a3c8f', color: '#fff', whiteSpace: 'nowrap' as any },
-  btnAddDis:  { padding: '8px 20px', borderRadius: 6, fontSize: 13, fontWeight: 600, cursor: 'default', background: '#9ca3af', border: '1.5px solid #9ca3af', color: '#fff', whiteSpace: 'nowrap' as any },
-  emptyBox:   { gridColumn: '1/-1', padding: '48px 20px', textAlign: 'center' as any, color: '#9ca3af', fontSize: 13 },
-  errorBox:   { gridColumn: '1/-1', padding: '48px 20px', textAlign: 'center' as any },
-  errIcon:    { color: '#ef4444', marginBottom: 12 },
-  errTitle:   { fontSize: 15, fontWeight: 600, color: '#374151', marginBottom: 6 },
-  errDesc:    { fontSize: 13, color: '#9ca3af', marginBottom: 16 },
-  btnRetry:   { display: 'inline-block', width: 'auto', padding: '8px 22px', borderRadius: 8, border: 'none', background: '#003087', color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer', boxSizing: 'border-box' as any },
+  btnAddDis:  { padding: '8px 20px', borderRadius: 5, fontSize: 13, fontWeight: 600, cursor: 'default', background: '#074085', border: '1.5px solid #074085', color: '#fff', opacity: 0.5, whiteSpace: 'nowrap' as any },
+  centeredState: { flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' },
+  emptyBox:   { padding: '48px 20px', textAlign: 'center' as any, color: '#9ca3af', fontSize: 13, display: 'flex', flexDirection: 'column' as any, alignItems: 'center', gap: 12 },
+  emptyIconWrap: { width: 64, height: 64, borderRadius: 16777200, background: '#F3F4F6', display: 'flex', alignItems: 'center', justifyContent: 'center' },
+  errorBox:   { padding: '48px 24px', textAlign: 'center' as any, display: 'flex', flexDirection: 'column' as any, alignItems: 'center', gap: 0 },
+  errIcon:    { width: 80, height: 80, borderRadius: 16777200, background: '#FEF2F2', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 20, color: '#ef4444' },
+  errTitle:   { fontSize: 18, fontWeight: 700, color: '#111827', marginBottom: 10 },
+  errDesc:    { fontSize: 14, color: '#6b7280', marginBottom: 24, lineHeight: 1.6 },
+  btnRetry:   { display: 'inline-block', width: 'auto', padding: '10px 32px', borderRadius: 24, border: 'none', background: '#003087', color: '#fff', fontSize: 14, fontWeight: 600, cursor: 'pointer', boxSizing: 'border-box' as any },
 };
 
 export default function VideoPickerEditor({ onSelect, onCancel }: Props) {
@@ -183,30 +185,44 @@ export default function VideoPickerEditor({ onSelect, onCancel }: Props) {
         </div>
       </div>
 
-      <div style={S.grid}>
-        {loading && (
+      {loading && (
+        <div style={S.centeredState}>
           <div style={S.emptyBox}>Loading videos…</div>
-        )}
+        </div>
+      )}
 
-        {!loading && apiError && (
+      {!loading && apiError && (
+        <div style={S.centeredState}>
           <div style={S.errorBox}>
             <div style={S.errIcon}>
-              <svg width="48" height="48" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24">
-                <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+              <svg width="48" height="48" fill="none" stroke="#ef4444" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
+                <circle cx="12" cy="12" r="10"/>
+                <line x1="12" y1="8" x2="12" y2="13"/>
+                <circle cx="12" cy="16.5" r="0.75" fill="#ef4444" stroke="none"/>
               </svg>
             </div>
             <div style={S.errTitle}>Something went wrong</div>
-            <div style={S.errDesc}>Unable to load videos. Please try again.</div>
+            <div style={S.errDesc}>We're unable to load videos at this time.<br/>Please try again.</div>
             <button style={S.btnRetry} onClick={e => { stop(e); load(); }}>Try Again</button>
           </div>
-        )}
+        </div>
+      )}
 
-        {!loading && !apiError && videos.length === 0 && (
+      {!loading && !apiError && videos.length === 0 && (
+        <div style={S.centeredState}>
           <div style={S.emptyBox}>
-            <strong style={{ display: 'block', color: '#6b7280', marginBottom: 4 }}>No videos available</strong>
-            There are no videos in the library.
+            <div style={S.emptyIconWrap}>
+              <svg width="48" height="48" fill="none" stroke="#9ca3af" strokeWidth="1.5" viewBox="0 0 24 24">
+                <path d="M15 10l4.553-2.069A1 1 0 0121 8.87v6.26a1 1 0 01-1.447.894L15 14M3 8a2 2 0 012-2h10a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V8z"/>
+              </svg>
+            </div>
+            <strong style={{ display: 'block', color: '#374151', fontSize: 15 }}>No videos available</strong>
+            <span style={{ fontSize: 13 }}>There are no videos in the library.</span>
           </div>
-        )}
+        </div>
+      )}
+
+      <div style={{ ...S.grid, display: !loading && !apiError && videos.length > 0 ? 'grid' : 'none' }}>
 
         {!loading && !apiError && videos.length > 0 && filtered.length === 0 && (
           <div style={S.emptyBox}>
@@ -271,15 +287,13 @@ export default function VideoPickerEditor({ onSelect, onCancel }: Props) {
       </div>
 
       <div style={S.footer}>
-        {totalPages > 1 && (
-          <div style={{ ...S.pagination, marginRight: 'auto' }}>
-            <button style={S.pgBtn} disabled={page === 1} onClick={() => setPage(p => p - 1)}>&#8249;</button>
-            {Array.from({ length: totalPages }, (_, i) => i + 1).map(n => (
-              <button key={n} style={n === page ? S.pgActive : S.pgBtn} onClick={() => setPage(n)}>{n}</button>
-            ))}
-            <button style={S.pgBtn} disabled={page === totalPages} onClick={() => setPage(p => p + 1)}>&#8250;</button>
-          </div>
-        )}
+        <div style={{ ...S.pagination, marginRight: 'auto' }}>
+          <button style={S.pgBtn} disabled={page === 1} onClick={() => setPage(p => p - 1)}>&#8249;</button>
+          {Array.from({ length: totalPages }, (_, i) => i + 1).map(n => (
+            <button key={n} style={n === page ? S.pgActive : S.pgBtn} onClick={() => setPage(n)}>{n}</button>
+          ))}
+          <button style={S.pgBtn} disabled={page === totalPages} onClick={() => setPage(p => p + 1)}>&#8250;</button>
+        </div>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
           <button style={S.btnCancel} onClick={e => { stop(e); onCancel?.(); }}>Cancel</button>
           <button

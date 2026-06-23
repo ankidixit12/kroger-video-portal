@@ -33,11 +33,11 @@ const S: Record<string, React.CSSProperties> = {
 
   /* Empty state */
   emptyBox:   { padding: '16px 20px', display: 'flex', flexDirection: 'row' as any, alignItems: 'center', gap: 16, border: '1.5px dashed #d1d5db', borderRadius: 8, background: '#fff' },
-  emptyIcon:  { flexShrink: 0, width: 64, height: 64, background: '#9ca3af', borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff' },
+  emptyIcon:  { flexShrink: 0, width: 'min(128px, 30%)', height: 80, background: 'linear-gradient(135deg, #C9CACB 0%, #747474 100%)', borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff' },
   emptyText:  { flex: 1 },
-  emptyTitle: { fontSize: 15, fontWeight: 700, color: '#111827', margin: 0 },
-  emptyDesc:  { fontSize: 13, color: '#6b7280', margin: '2px 0 0' },
-  selectBtn:  { flexShrink: 0, padding: '9px 20px', background: '#1e3a6e', color: '#fff', border: 'none', borderRadius: 6, fontSize: 14, fontWeight: 600, cursor: 'pointer' },
+  emptyTitle: { fontFamily: 'Inter, sans-serif', fontSize: 16, fontStyle: 'normal', fontWeight: 600, lineHeight: '24px', letterSpacing: '-0.312px', color: '#364153', margin: 0 },
+  emptyDesc:  { fontFamily: 'Inter, sans-serif', fontSize: 14, fontStyle: 'normal', fontWeight: 400, lineHeight: '20px', letterSpacing: '-0.15px', color: '#6A7282', margin: '2px 0 0' },
+  selectBtn:  { flexShrink: 0, padding: '9px 20px', background: '#074085', color: '#fff', border: 'none', borderRadius: 5, fontSize: 14, fontWeight: 600, cursor: 'pointer' },
 
   /* Selected state — card */
   selectedBody: { padding: '16px' },
@@ -60,7 +60,7 @@ const S: Record<string, React.CSSProperties> = {
   modalBody:  { flex: 1, minHeight: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column' as any },
 };
 
-export default function EditorWrapper({ division: _division, videotitle, videourl, videoduration, videoexpiry, videothumb, onSelect }: Props) {
+export default function EditorWrapper({ division: _division, videotitle, videourl, videoduration: _videoduration, videoexpiry, videothumb, onSelect }: Props) {
   const [open, setOpen]       = useState(false);
   const [hovered, setHovered] = useState(false);
 
@@ -127,7 +127,7 @@ export default function EditorWrapper({ division: _division, videotitle, videour
       ) : (
         <div style={S.emptyBox}>
           <div style={S.emptyIcon}>
-            <svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor">
+            <svg width="40" height="40" viewBox="0 0 24 24" fill="currentColor">
               <polygon points="6,4 20,12 6,20"/>
             </svg>
           </div>
