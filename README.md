@@ -74,6 +74,26 @@ curl --location --request PUT 'https://krogertest.staffbase.com/api/posts/6a34f7
     ]
 }'
 
+
+Below is an API -  that we can use to get token 
+ 
+for this we need plugin ID- that we can get from any plugin or install our own plugin, 
+ 
+Make sure you pass this token header in All API calls  , 
+ 
+for now just integrate this API in widget code
+ 
+ 
+ 
+ 
+ 
+curl --location 'https://krogertest.staffbase.com/api/installations/6a0cc22372fe006d424385a2/service/token' \
+--header 'Cookie: sid_live_krogertest=j49oyy8k1c1yk0i5id6b2wws5k; sid_live_krogertest=j49oyy8k1c1yk0i5id6b2wws5k'
+ 
+{
+    "jwt": "eyJhbGciOiJSUzI1NiJ9.eyJpc3MiOiJzdGFmZmJhc2UtYmFja2VuZC1saXZlIiwiaXNzdWVyX2RvbWFpbiI6Imtyb2dlcnRlc3Quc3RhZmZiYXNlLmNvbSIsImF1ZCI6ImludGVncmF0ZWRjb250ZW50IiwiaW5zdGFuY2VfaWQiOiI2YTBjYzIyMzcyZmUwMDZkNDI0Mzg1YTIiLCJzaWQiOiJiNTNmNGRhYWRlNzQ2MjExYzA5OTRmZGUxMzlhMWU3MDFjMjFmMGMyMDAxYWFkN2NkOGNlY2Q2NzQyMGJiZWFiIiwiaW5zdGFuY2VfbmFtZSI6InRlc3QgcGx1Z2luIDEiLCJ0aGVtaW5nX2JnIjoiIzBENTFBMSIsInRoZW1pbmdfdGV4dCI6IiNGMEY3RkQiLCJsb2NhbGUiOiJlbl9VUyIsInJvbGUiOiJlZGl0b3IiLCJzdWIiOiI2YTBiODI4NDQ0YmNkODBkMGNlNjEwMWIiLCJ0eXBlIjoidXNlciIsImV4dGVybmFsX2lkIjoiRExUMTc3OSIsImdpdmVuX25hbWUiOiJBamlzaGFuIiwiZmFtaWx5X25hbWUiOiJKb3NlIiwibmFtZSI6IkFqaXNoYW4gSm9zZSIsImJyYW5jaF9pZCI6IjY5YzZlZGUyZTlmNjNkMDg0OWY2NjM1YiIsImJyYW5jaF9zbHVnIjoia3JvZ2VydGVzdCIsImp0aSI6Ikk1bExfaW5iM0hHd0dpZkc5dTF3cGciLCJleHAiOjE3ODIyODQ1OTMsIm5iZiI6MTc4MjI4NDUwMywiaWF0IjoxNzgyMjg0NTMzfQ.WpEV5NzrKiDA4le4NUTR7wPyUOnCsFWDkJT3uKa2DrYTJ_2fukrkbo1VfjRigUoVijyiSOggW9bBzr-fFkcdZlJs1HGHrkOfx9b2YtXZ2_rPt1_UimIVU6QfE-5VkOTM5aZXw8pdIpPsf7JLrLPL4LkMcA1x1QUt9OxkYbVKGBhtQwmxRiCKBUmL3x9WAhGDn8zokZDM2aZIeagOq0tlYqM79KedVa4o0wa482b9YxHXPh25mZqsMLDDF3l1qq3eYBPo0Rn9OtI2USmEvWG_4DLEyx63ZTUjCosDRO_NZNB-L9JDencswhqzvXZTI8-ZE2tDpcmHkK4E9iqe8b7IrA"
+}
+ 
 The UI changes needed are mainly around integrating the QUMU Search API and Master Data API so Staffbase can support video discovery, pagination, title search, metadata filters, and playback.
 
 1. Authentication update
