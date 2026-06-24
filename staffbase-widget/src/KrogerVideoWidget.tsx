@@ -23,28 +23,11 @@ const S: Record<string, React.CSSProperties> = {
   title:       { fontSize: 15, fontWeight: 600, color: '#111827', margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' },
   embedWrap:   { position: 'relative', paddingBottom: '56.25%', height: 0, background: '#000' },
   iframe:      { position: 'absolute', inset: 0 as any, width: '100%', height: '100%', border: 'none' },
-  empty:       { display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '60px 24px', textAlign: 'center' },
-  emptyIcon:   { color: '#d1d5db', marginBottom: 16 },
-  emptyTitle:  { fontSize: 16, fontWeight: 600, color: '#6b7280', margin: '0 0 8px' },
-  emptyDesc:   { fontSize: 13, color: '#9ca3af', margin: 0 },
 };
 
 export default function KrogerVideoWidget({ division, videotitle, videourl }: Props) {
   if (!videourl) {
-    return (
-      <div style={S.wrap}>
-        <div style={{ ...S.card, ...S.empty }}>
-          <div style={S.emptyIcon}>
-            <svg width="52" height="52" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24">
-              <rect x="3" y="3" width="18" height="18" rx="2"/>
-              <path d="M10 8l6 4-6 4V8z"/>
-            </svg>
-          </div>
-          <p style={S.emptyTitle}>No video configured</p>
-          <p style={S.emptyDesc}>Edit this widget to select a division and video.</p>
-        </div>
-      </div>
-    );
+    return null;
   }
 
   return (
