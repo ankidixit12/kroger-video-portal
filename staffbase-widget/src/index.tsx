@@ -1,4 +1,4 @@
-import React from 'react';
+﻿import React from 'react';
 import { createRoot, Root } from 'react-dom/client';
 import {
   BlockFactory,
@@ -105,5 +105,9 @@ const externalBlockDefinition: ExternalBlockDefinition = {
   author: pkg.author,
   version: pkg.version,
 };
+
+const _labelStyle = document.createElement('style');
+_labelStyle.textContent = '.ui-commons__widget-menu__label { white-space: pre-line !important; }';
+document.head.appendChild(_labelStyle);
 
 window.defineBlock(externalBlockDefinition);
