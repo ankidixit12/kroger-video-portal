@@ -73,3 +73,313 @@ curl --location --request PUT 'https://krogertest.staffbase.com/api/posts/6a34f7
         "push"
     ]
 }'
+
+
+Below is an API -  that we can use to get token 
+ 
+for this we need plugin ID- that we can get from any plugin or install our own plugin, 
+ 
+Make sure you pass this token header in All API calls  , 
+ 
+for now just integrate this API in widget code
+ 
+ 
+ 
+ 
+ 
+curl --location 'https://krogertest.staffbase.com/api/installations/6a0cc22372fe006d424385a2/service/token' \
+--header 'Cookie: sid_live_krogertest=j49oyy8k1c1yk0i5id6b2wws5k; sid_live_krogertest=j49oyy8k1c1yk0i5id6b2wws5k'
+ 
+{
+    "jwt": "eyJhbGciOiJSUzI1NiJ9.eyJpc3MiOiJzdGFmZmJhc2UtYmFja2VuZC1saXZlIiwiaXNzdWVyX2RvbWFpbiI6Imtyb2dlcnRlc3Quc3RhZmZiYXNlLmNvbSIsImF1ZCI6ImludGVncmF0ZWRjb250ZW50IiwiaW5zdGFuY2VfaWQiOiI2YTBjYzIyMzcyZmUwMDZkNDI0Mzg1YTIiLCJzaWQiOiJiNTNmNGRhYWRlNzQ2MjExYzA5OTRmZGUxMzlhMWU3MDFjMjFmMGMyMDAxYWFkN2NkOGNlY2Q2NzQyMGJiZWFiIiwiaW5zdGFuY2VfbmFtZSI6InRlc3QgcGx1Z2luIDEiLCJ0aGVtaW5nX2JnIjoiIzBENTFBMSIsInRoZW1pbmdfdGV4dCI6IiNGMEY3RkQiLCJsb2NhbGUiOiJlbl9VUyIsInJvbGUiOiJlZGl0b3IiLCJzdWIiOiI2YTBiODI4NDQ0YmNkODBkMGNlNjEwMWIiLCJ0eXBlIjoidXNlciIsImV4dGVybmFsX2lkIjoiRExUMTc3OSIsImdpdmVuX25hbWUiOiJBamlzaGFuIiwiZmFtaWx5X25hbWUiOiJKb3NlIiwibmFtZSI6IkFqaXNoYW4gSm9zZSIsImJyYW5jaF9pZCI6IjY5YzZlZGUyZTlmNjNkMDg0OWY2NjM1YiIsImJyYW5jaF9zbHVnIjoia3JvZ2VydGVzdCIsImp0aSI6Ikk1bExfaW5iM0hHd0dpZkc5dTF3cGciLCJleHAiOjE3ODIyODQ1OTMsIm5iZiI6MTc4MjI4NDUwMywiaWF0IjoxNzgyMjg0NTMzfQ.WpEV5NzrKiDA4le4NUTR7wPyUOnCsFWDkJT3uKa2DrYTJ_2fukrkbo1VfjRigUoVijyiSOggW9bBzr-fFkcdZlJs1HGHrkOfx9b2YtXZ2_rPt1_UimIVU6QfE-5VkOTM5aZXw8pdIpPsf7JLrLPL4LkMcA1x1QUt9OxkYbVKGBhtQwmxRiCKBUmL3x9WAhGDn8zokZDM2aZIeagOq0tlYqM79KedVa4o0wa482b9YxHXPh25mZqsMLDDF3l1qq3eYBPo0Rn9OtI2USmEvWG_4DLEyx63ZTUjCosDRO_NZNB-L9JDencswhqzvXZTI8-ZE2tDpcmHkK4E9iqe8b7IrA"
+}
+ 
+The UI changes needed are mainly around integrating the QUMU Search API and Master Data API so Staffbase can support video discovery, pagination, title search, metadata filters, and playback.
+
+1. Authentication update
+All UI API calls should use the Staffbase Bearer token going forward instead of Basic Auth.
+
+Current header:
+
+
+
+Authorization: Basic <encoded-credentials>
+Expected future header:
+
+
+
+Authorization: Bearer <staffbase-token>
+This applies to both QUMU APIs:
+
+
+
+GET /staffbase-qumu/kulus
+POST /staffbase-qumu/kulus
+GET /staffbase-qumu/kulus/masterdata/kulutypes
+Base URL:
+
+
+
+https://staffbase-qumu-gfe9e3e8ced6g3cu.eastus2-01.azurewebsites.net
+2. Video listing with pagination
+The UI should call the QUMU Search API to retrieve videos in pages.
+
+API:
+
+
+
+GET /staffbase-qumu/kulus?offset={offset}&limit={limit}
+Example:
+
+
+
+GET https://staffbase-qumu-gfe9e3e8ced6g3cu.eastus2-01.azurewebsites.net/staffbase-qumu/kulus?offset=0&limit=10
+UI expectation:
+
+Add pagination or infinite scroll.
+
+Use offset and limit to fetch the next set of videos.
+
+Use the total value from the response to know when all videos are loaded.
+
+Render videos from kulus[].
+
+Important response fields for UI:
+
+
+
+{
+  "kulus": [],
+  "total": 12
+}
+3. Title-based video search
+The UI should support searching videos by title using the search query parameter.
+
+API:
+
+
+
+GET /staffbase-qumu/kulus?offset={offset}&limit={limit}&search=title,is,{searchText}
+Example:
+
+
+
+GET https://staffbase-qumu-gfe9e3e8ced6g3cu.eastus2-01.azurewebsites.net/staffbase-qumu/kulus?offset=0&limit=10&search=title,is,Go%20blink
+UI expectation:
+
+Add a search input field.
+
+On user search, call the GET endpoint with the search parameter.
+
+Reset offset to 0 when a new search is performed.
+
+Display matching videos and update pagination based on the returned total.
+
+4. Division/category filter dropdowns
+The UI should show metadata filters such as Division and Category. These dropdown options should not be hardcoded. They should come from the Master Data API.
+
+API to fetch filter options:
+
+
+
+GET /staffbase-qumu/kulus/masterdata/kulutypes?titles={titles}
+Single title example:
+
+
+
+GET https://staffbase-qumu-gfe9e3e8ced6g3cu.eastus2-01.azurewebsites.net/staffbase-qumu/kulus/masterdata/kulutypes?titles=Division
+Multiple titles example:
+
+
+
+GET https://staffbase-qumu-gfe9e3e8ced6g3cu.eastus2-01.azurewebsites.net/staffbase-qumu/kulus/masterdata/kulutypes?titles=Division%2CCategory
+UI expectation:
+
+On widget load, call the Master Data API.
+
+Populate dropdowns using metadata[].options[].
+
+Display readable values like Fred Meyer, Atlanta, New Hire.
+
+Store/use the corresponding GUIDs when making filtered search requests.
+
+Example mapping from response:
+
+
+
+{
+  "guid": "Twqc1qOMKchTv3teaUYulJ",
+  "title": "Division",
+  "options": [
+    {
+      "guid": "9PNJ20vcUeiJaxyiMOKbnh",
+      "value": "Fred Meyer"
+    }
+  ]
+}
+Here:
+
+Twqc1qOMKchTv3teaUYulJ = Division field GUID
+
+9PNJ20vcUeiJaxyiMOKbnh = Fred Meyer option GUID
+
+5. Filtered video search using POST
+When the user selects Division, Category, or other metadata filters, the UI should call the same QUMU Search API using POST.
+
+API:
+
+
+
+POST /staffbase-qumu/kulus?offset={offset}&limit={limit}
+Example:
+
+
+
+POST https://staffbase-qumu-gfe9e3e8ced6g3cu.eastus2-01.azurewebsites.net/staffbase-qumu/kulus?offset=0&limit=10
+Request body:
+
+
+
+{
+  "playlist": {
+    "matchAll": false,
+    "rules": [
+      {
+        "comparator": "CONTAINS",
+        "field": {
+          "guid": "Twqc1qOMKchTv3teaUYulJ"
+        },
+        "value": "9PNJ20vcUeiJaxyiMOKbnh"
+      }
+    ]
+  }
+}
+UI expectation:
+
+Build playlist.rules[] based on selected filter values.
+
+Use the metadata field GUID from the Master Data API.
+
+Use the selected option GUID as the rule value.
+
+Use matchAll: false if results can match any selected filter.
+
+Use matchAll: true if results must match all selected filters.
+
+Reset pagination when filters change.
+
+6. Video card rendering
+The UI should render each video from the kulus[] response as a video card.
+
+API source:
+
+
+
+GET /staffbase-qumu/kulus
+POST /staffbase-qumu/kulus
+Fields to use:
+
+UI element
+
+Response field
+
+Video title
+
+kulus[].title
+
+Thumbnail
+
+kulus[].thumbnail.cdnUrl or kulus[].thumbnail.url
+
+Duration
+
+kulus[].duration
+
+Publisher
+
+kulus[].publisher.name
+
+Author
+
+metadata[] where title = "Author"
+
+Division
+
+metadata[] where title = "Division"
+
+Category
+
+metadata[] where title = "Category"
+
+State
+
+kulus[].state
+
+Player URL
+
+kulus[].player
+
+Media URL
+
+kulus[].media.url or kulus[].media.variants[]
+
+UI expectation:
+
+Show thumbnail, title, duration, publisher/author, and metadata tags.
+
+Convert duration from milliseconds to readable format, for example 333083 → 05:33.
+
+Use thumbnail.cdnUrl first if available; otherwise fallback to thumbnail.url.
+
+Open or embed playback using player.
+
+Optionally use media.variants[] for direct MP4 playback if required.
+
+7. Published vs withdrawn video handling
+The API returns video state in:
+
+
+
+"state": "PUBLISHED"
+or
+
+
+
+"state": "WITHDRAWN"
+UI expectation:
+
+In Viewer Mode, show only PUBLISHED videos if withdrawn content should not be visible to associates.
+
+In Editor/Admin Mode, optionally show a badge for video state.
+
+Clearly distinguish WITHDRAWN videos if they are shown in authoring mode.
+
+Short version
+UI needs to integrate these APIs:
+
+
+
+GET /staffbase-qumu/kulus?offset={offset}&limit={limit}
+For paginated video listing.
+
+
+
+GET /staffbase-qumu/kulus?offset={offset}&limit={limit}&search=title,is,{searchText}
+For title search.
+
+
+
+POST /staffbase-qumu/kulus?offset={offset}&limit={limit}
+For Division/Category filtered video search using playlist rules.
+
+
+
+GET /staffbase-qumu/kulus/masterdata/kulutypes?titles=Division
+or
+
+
+
+GET /staffbase-qumu/kulus/masterdata/kulutypes?titles=Division%2CCategory
+For loading filter dropdown values and GUID mappings.
+
+Overall, the UI needs to support Bearer token authentication, paginated video listing, title search, metadata-driven filters, video card rendering, and state handling for PUBLISHED vs WITHDRAWN content.
