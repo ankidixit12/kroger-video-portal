@@ -1,14 +1,75 @@
-declare const process: { env: Record<string, string | undefined> };
+declare const process: { env: Record<string, string> };
 
-const QUMU_API = 'https://staffbase-qumu-service-gfh7bccrescea0fe.eastus-01.azurewebsites.net/staffbase-qumu/kulus';
+let _staffbaseBase  = 'https://krogertest.staffbase.com';
+let _installationId = '6a3bd7361da609538cb79dac';
 
-const _u = process.env.QUMU_USERNAME || '';
-const _p = process.env.QUMU_PASSWORD || '';
-export const AUTH_HEADER: Record<string, string> = _u
-  ? { Authorization: 'Basic ' + btoa(_u + ':' + _p) }
-  : {};
-  
-console.log("Auth header set:", AUTH_HEADER);  
+// On localhost requests go through the webpack proxy (/api/kulus) to avoid CORS.
+// In production the direct Azure URL is used (Staffbase origin is allowed by the QUMU service).
+const _isLocalhost = typeof window !== 'undefined' &&
+  (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+const QUMU_BASE = _isLocalhost
+  ? '/api/kulus'
+  : 'https://staffbase-qumu-gfe9e3e8ced6g3cu.eastus2-01.azurewebsites.net/staffbase-qumu/kulus';
+
+export function setStaffbaseBaseUrl(url: string): void {
+  if (url) _staffbaseBase = url.replace(/\/$/, '');
+}
+
+export function setInstallationId(id: string): void {
+  if (id) _installationId = id;
+}
+
+export const AUTH_HEADER: Record<string, string> = {};
+
+function basicAuthHeaders(extra?: Record<string, string>): Record<string, string> {
+  const u = process.env.QUMU_USERNAME || '';
+  const p = process.env.QUMU_PASSWORD || '';
+  return { Authorization: 'Basic ' + btoa(u + ':' + p), ...extra };
+}
+
+// ─── Interfaces ───────────────────────────────────────────────────────────────
+
+export interface MetadataOption {
+  guid: string;
+  value: string;
+}
+
+export interface MetadataType {
+  guid: string;
+  title: string;
+  options: MetadataOption[];
+}
+
+export interface PlaylistRule {
+  fieldGuid:   string;
+  fieldTitle:  string;
+  optionGuid:  string;
+  optionValue: string;
+}
+
+export interface FetchResult {
+  items: VideoItem[];
+  total: number;
+}
+
+export interface VideoItem {
+  id: string | number;
+  title: string;
+  description: string;
+  author?: string;
+  duration: string;
+  category: string;
+  division?: string;
+  publishedAt: string;
+  expiryDate?: string;
+  withdrawOn?: string;
+  thumbnailColor: string;
+  thumbnailUrl?: string;
+  videoUrl: string;
+  state: string;
+}
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 
 const DIVISION_COLORS: Record<string, string> = {
   Dallas: '#004990', 'Fred Meyer': '#1a6b3a', Atlanta: '#EF3E42',
@@ -16,35 +77,11 @@ const DIVISION_COLORS: Record<string, string> = {
   Michigan: '#2e7d32', Columbus: '#37474f', GO: '#004990',
 };
 
-export interface VideoItem {
-  id: string | number;
-  title: string;
-  description: string;
-  series?: string;
-  author?: string;
-  duration: string;
-  category: string;
-  division?: string;
-  region?: string;
-  publishedAt: string;
-  expiryDate?: string;
-  withdrawOn?: string;
-  thumbnailColor: string;
-  thumbnailUrl?: string;
-  videoUrl: string;
-}
-
-export interface FetchParams {
-  category?: string;
-  limit?: number;
-  page?: number;
-}
-
 function msToDuration(ms: number): string {
   const totalSec = Math.floor(ms / 1000);
   const min = Math.floor(totalSec / 60);
   const sec = totalSec % 60;
-  return `${min}:${sec < 10 ? '0' + sec : sec}`;
+  return `${min < 10 ? '0' + min : min}:${sec < 10 ? '0' + sec : sec}`;
 }
 
 function getMeta(metadata: any[], title: string): string | null {
@@ -52,11 +89,7 @@ function getMeta(metadata: any[], title: string): string | null {
   if (!field || field.value == null) return null;
   if (Array.isArray(field.value)) return field.value.length ? String(field.value[0]) : null;
   if (typeof field.value === 'object') {
-    // Handle objects like {guid, value} by extracting the value property
-    if (field.value && field.value.value !== undefined) {
-      return String(field.value.value);
-    }
-    return null;
+    return field.value?.value !== undefined ? String(field.value.value) : null;
   }
   return String(field.value);
 }
@@ -66,62 +99,85 @@ function safeString(val: any): string {
   if (typeof val === 'string') return val;
   if (typeof val === 'object') {
     if (val.value !== undefined) return String(val.value);
-    if (val.name !== undefined) return String(val.name);
+    if (val.name  !== undefined) return String(val.name);
     return '';
   }
   return String(val);
 }
 
 function mapKuluToVideoItem(k: any): VideoItem {
-  const division = getMeta(k.metadata, 'Division') || '';
-  const category = getMeta(k.metadata, 'Category') || 'Corporate';
+  const division    = getMeta(k.metadata, 'Division') || '';
+  const category    = getMeta(k.metadata, 'Category') || 'Corporate';
   const description = getMeta(k.metadata, 'Description') || '';
-  const metaAuthor = getMeta(k.metadata, 'Author');
-  const author = safeString(metaAuthor || (k.publisher && k.publisher.name) || '');
+  const metaAuthor  = getMeta(k.metadata, 'Author');
+  const author      = safeString(metaAuthor || k.publisher?.name || '');
 
   return {
-    id: k.guid,
-    title: safeString(k.title || ''),
-    description: safeString(description),
+    id:             k.guid,
+    title:          safeString(k.title || ''),
+    description:    safeString(description),
     author,
-    duration: k.duration ? msToDuration(k.duration) : '0:00',
-    category: safeString(category),
-    division: division ? safeString(division) : undefined,
-    publishedAt: safeString(k.published || k.created || ''),
-    // Qumu uses withdrawOn as the effective video expiry date.
-    expiryDate: safeString(k.withdrawOn || k.expiryDate || ''),
-    withdrawOn: k.withdrawOn ? safeString(k.withdrawOn) : undefined,
-    thumbnailColor: DIVISION_COLORS[division] || DIVISION_COLORS[author] || '#004990',
-    thumbnailUrl: k.thumbnail ? (k.thumbnail.cdnUrl || k.thumbnail.url || undefined) : undefined,
-    videoUrl: safeString(k.player || ''),
+    duration:       k.duration ? msToDuration(k.duration) : '00:00',
+    category:       safeString(category),
+    division:       division ? safeString(division) : undefined,
+    publishedAt:    safeString(k.published || k.created || ''),
+    expiryDate:     safeString(k.withdrawOn || k.expiryDate || ''),
+    withdrawOn:     k.withdrawOn ? safeString(k.withdrawOn) : undefined,
+    thumbnailColor: DIVISION_COLORS[division] || '#004990',
+    thumbnailUrl:   k.thumbnail ? (k.thumbnail.cdnUrl || k.thumbnail.url || undefined) : undefined,
+    videoUrl:       safeString(k.player || ''),
+    state:          safeString(k.state || 'PUBLISHED'),
   };
 }
 
-export async function fetchVideos(params?: FetchParams): Promise<VideoItem[]> {
+// ─── API ──────────────────────────────────────────────────────────────────────
+
+export async function fetchVideos(params?: {
+  offset?: number;
+  limit?:  number;
+  search?: string;
+}): Promise<FetchResult> {
   const query = new URLSearchParams();
-  query.set('page', String((params && params.page) || 1));
-  query.set('perPage', String((params && params.limit) || 5));
-  query.set('sort', '-updatedAt');
+  query.set('offset', String(params?.offset ?? 0));
+  query.set('limit',  String(params?.limit  ?? 10));
+  if (params?.search) query.set('search', `title,is,${params.search}`);
 
-  const url = `${QUMU_API}?${query.toString()}`;
+  const res = await fetch(`${QUMU_BASE}?${query}`, { headers: basicAuthHeaders(), credentials: 'include' });
+  if (!res.ok) throw new Error('fetchVideos HTTP ' + res.status);
+  const data = await res.json();
+  return { items: (data.kulus || []).map(mapKuluToVideoItem), total: data.total ?? 0 };
+}
 
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 30000);
+export async function fetchVideosByFilter(params: {
+  offset?:   number;
+  limit?:    number;
+  rules:     PlaylistRule[];
+}): Promise<FetchResult> {
+  const query = new URLSearchParams();
+  query.set('offset', String(params.offset ?? 0));
+  query.set('limit',  String(params.limit  ?? 10));
 
-  try {
-    const res = await fetch(url, { signal: controller.signal, headers: AUTH_HEADER });
-    clearTimeout(timer);
-    if (!res.ok) throw new Error('API error ' + res.status);
-    const data = await res.json();
-    const items: VideoItem[] = (data.kulus || []).map(mapKuluToVideoItem);
+  // QUMU GET search format: "<fieldGuid>,CONTAINS,<optionGuid>"
+  // Multiple rules are joined with semicolons
+  const searchParts = params.rules.map(r => `${r.fieldGuid},CONTAINS,${r.optionGuid}`);
+  if (searchParts.length > 0) query.set('search', searchParts.join(';'));
 
-    if (params && params.category && params.category !== 'all') {
-      return items.filter(v => v.category === params.category);
-    }
-    return items;
-  } catch (err) {
-    clearTimeout(timer);
-    console.warn('[VideoService] API unavailable', err);
-    throw err;
-  }
+  const url = `${QUMU_BASE}?${query}`;
+  console.log('[KrogerWidget] fetchVideosByFilter GET', url);
+
+  const res = await fetch(url, { headers: basicAuthHeaders(), credentials: 'include' });
+  const raw = await res.text();
+  console.log('[KrogerWidget] filterResponse', res.status, raw.slice(0, 500));
+  if (res.status === 404) return { items: [], total: 0 };
+  if (!res.ok) throw new Error('fetchVideosByFilter HTTP ' + res.status);
+  const data = JSON.parse(raw);
+  return { items: (data.kulus || []).map(mapKuluToVideoItem), total: data.total ?? 0 };
+}
+
+export async function fetchMasterData(titles: string[]): Promise<MetadataType[]> {
+  const url = `${QUMU_BASE}/masterdata/kulutypes?titles=${encodeURIComponent(titles.join(','))}`;
+  const res = await fetch(url, { headers: basicAuthHeaders(), credentials: 'include' });
+  if (!res.ok) throw new Error('fetchMasterData HTTP ' + res.status);
+  const data = await res.json();
+  return data.metadata || [];
 }
