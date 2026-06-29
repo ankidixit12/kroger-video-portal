@@ -34,7 +34,9 @@ function fmtDate(d: string): string {
 
 function isExpiringSoon(d: string): boolean {
   if (!d) return false;
-  return (new Date(d).getTime() - Date.now()) / 86400000 < 90;
+  const t = new Date(d).getTime();
+  if (Number.isNaN(t)) return false;
+  return t >= Date.now();
 }
 
 function thumbUrl(v: VideoItem): string {
@@ -357,15 +359,28 @@ export default function VideoPickerEditor({ onSelect, onCancel }: Props) {
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
                     {([
-                      ['Author',    v.author || '—',                           false],
-                      ['Published', fmtDate(v.publishedAt),                    false],
-                      ['Expires',   fmtDate(expiryDate), !!(expired || expiring)],
-                    ] as [string, string, boolean][]).map(([label, val, red]) => (
+                      ['Author',    v.author || '—'],
+                      ['Published', fmtDate(v.publishedAt)],
+                    ] as [string, string][]).map(([label, val]) => (
                       <div key={label} style={S.metaRow}>
                         <span style={S.metaLabel}>{label}</span>
-                        <span style={red ? S.metaExp : S.metaVal}>{val}</span>
+                        <span style={S.metaVal}>{val}</span>
                       </div>
                     ))}
+                    <div style={S.metaRow}>
+                      <span style={S.metaLabel}>Expires</span>
+                      {expired ? (
+                        <span style={S.metaExp}>{fmtDate(expiryDate)}</span>
+                      ) : expiring ? (
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, border: '1px solid #FEE685', borderRadius: 4, paddingTop: 0, paddingBottom: 0, paddingLeft: 0, paddingRight: 3, background: '#FFFBEB' }}>
+                          <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#d97706', flexShrink: 0 }} />
+                          <span style={{ color: '#d97706', fontSize: 9, fontWeight: 700, whiteSpace: 'nowrap' as const }}>Expiring soon</span>
+                          <span style={{ color: '#d97706', fontWeight: 600 }}>{fmtDate(expiryDate)}</span>
+                        </span>
+                      ) : (
+                        <span style={S.metaVal}>{fmtDate(expiryDate)}</span>
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>

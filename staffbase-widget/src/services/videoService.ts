@@ -129,7 +129,14 @@ function msToDuration(ms: number): string {
 function getMeta(metadata: any[], title: string): string | null {
   const field = (metadata || []).find((m: any) => m.title === title);
   if (!field || field.value == null) return null;
-  if (Array.isArray(field.value)) return field.value.length ? String(field.value[0]) : null;
+  if (Array.isArray(field.value)) {
+    if (!field.value.length) return null;
+    const first = field.value[0];
+    if (first && typeof first === 'object') {
+      return first.value !== undefined ? String(first.value) : (first.name !== undefined ? String(first.name) : null);
+    }
+    return String(first);
+  }
   if (typeof field.value === 'object') {
     return field.value?.value !== undefined ? String(field.value.value) : null;
   }

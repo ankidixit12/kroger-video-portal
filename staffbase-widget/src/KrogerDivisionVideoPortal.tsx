@@ -33,8 +33,9 @@ function isExpired(iso?: string): boolean {
 
 function isExpiringSoon(iso?: string): boolean {
   if (!iso) return false;
-  const ms = new Date(iso).getTime() - Date.now();
-  return !Number.isNaN(ms) && ms > 0 && ms / 86400000 < 90;
+  const t = new Date(iso).getTime();
+  if (Number.isNaN(t)) return false;
+  return t >= Date.now();
 }
 
 function highlight(text: string, q: string): string {

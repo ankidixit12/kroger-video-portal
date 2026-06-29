@@ -28,7 +28,9 @@ function fmtDate(d: string): string {
 
 function isExpiringSoon(d: string): boolean {
   if (!d) return false;
-  return (new Date(d).getTime() - Date.now()) / 86400000 < 90;
+  const t = new Date(d).getTime();
+  if (Number.isNaN(t)) return false;
+  return t >= Date.now();
 }
 
 const S: Record<string, React.CSSProperties> = {
@@ -119,9 +121,17 @@ export default function EditorWrapper({ division: _division, videotitle, videour
             <div style={S.cardInfo}>
               <p style={S.videoTitle}>{videotitle || 'Selected Video'}</p>
               {videoexpiry && (
-                <p style={{ ...S.expiryText, color: expiring ? '#d97706' : '#9ca3af' }}>
-                  Expires: {fmtDate(videoexpiry)}
-                </p>
+                expiring ? (
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, border: '1px solid #FEE685', borderRadius: 4, paddingTop: 0, paddingBottom: 0, paddingLeft: 1, paddingRight: 3, background: '#FFFBEB', marginTop: 4 }}>
+                    <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#d97706', flexShrink: 0 }} />
+                    <span style={{ color: '#d97706', fontSize: 11, fontWeight: 700, whiteSpace: 'nowrap' as const }}>Expiring soon</span>
+                    <span style={{ color: '#d97706', fontSize: 11, fontWeight: 600 }}>{fmtDate(videoexpiry)}</span>
+                  </span>
+                ) : (
+                  <p style={{ ...S.expiryText, color: '#9ca3af' }}>
+                    Expires: {fmtDate(videoexpiry)}
+                  </p>
+                )
               )}
             </div>
           </div>
