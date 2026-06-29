@@ -299,7 +299,7 @@ function hookTopFetch(thumbUrl: string, qumuThumbUrl?: string): void {
         if (id) {
           capturedDraftArticleId = id;
           console.info('[KrogerVideoWidget] Draft article ID captured from XHR GET:', id);
-          const putUrl   = `https://staffbase-poc-emcedzc0gkfyg4af.eastus2-01.azurewebsites.net/staffbase-qumu/kulus/api/post/${id}`;
+          const putUrl   = `https://staffbase-qumu-gfe9e3e8ced6g3cu.eastus2-01.azurewebsites.net/staffbase-qumu/kulus/api/post/${id}`;
           const imageUrl = qumuThumbUrl || thumbUrl;
           (async () => {
             try {
