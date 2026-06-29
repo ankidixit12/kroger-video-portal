@@ -10,7 +10,7 @@ import KrogerVideoWidget from './KrogerVideoWidget';
 import EditorWrapper from './EditorWrapper';
 import { configurationSchema, uiSchema } from './configuration-schema';
 import { injectArticleCoverImage } from './services/articleCoverService';
-import { setInstallationId, setPluginId, setStaffbaseBaseUrl } from './services/videoService';
+import { setInstallationId, setStaffbaseBaseUrl } from './services/videoService';
 import pkg from '../package.json';
 
 // Extract installation ID from the script's own src URL.
@@ -34,27 +34,8 @@ function resolveInstallationId(): string {
   return '';
 }
 
-// Resolve plugin ID from the Staffbase admin URL.
-// URL pattern: https://<domain>/admin/plugin/<channel>/<24-hex-id>
-// e.g. https://krogertest.staffbase.com/admin/plugin/news/<pluginId>
-function resolvePluginId(): string {
-  try {
-    const href = (window.top as Window).location.href;
-
-    // Primary: /admin/plugin/<channel>/<id>
-    const fromAdmin = href.match(/\/admin\/plugin\/[^/?#]+\/([a-f0-9]{24})(?:[/?#]|$)/i)?.[1];
-    if (fromAdmin) return fromAdmin;
-
-    // Fallback: pluginId query param (e.g. ?pluginId=...)
-    const fromParam = href.match(/[?&]pluginId=([a-f0-9]{24})/i)?.[1];
-    if (fromParam) return fromParam;
-  } catch { /* cross-origin or SSR — ignore */ }
-  return '';
-}
-
-// Resolve both IDs at script-load time while document.currentScript is still live
+// Resolve installation ID at script-load time while document.currentScript is still live
 setInstallationId(resolveInstallationId());
-setPluginId(resolvePluginId());
 
 const icon = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDgiIGhlaWdodD0iNDgiIHZpZXdCb3g9IjAgMCA0OCA0OCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4NCjxwYXRoIGQ9Ik0zMiAyNS45OTk2TDQyLjQ0NiAzMi45NjM2QzQyLjU5NjYgMzMuMDYzOCA0Mi43NzE1IDMzLjEyMTMgNDIuOTUyMiAzMy4xMjk5QzQzLjEzMjkgMzMuMTM4NSA0My4zMTI1IDMzLjA5OCA0My40NzIgMzMuMDEyNkM0My42MzE1IDMyLjkyNzMgNDMuNzY0OCAzMi44MDAyIDQzLjg1NzggMzIuNjQ1MUM0My45NTA4IDMyLjQ4OTkgNDMuOTk5OSAzMi4zMTI0IDQ0IDMyLjEzMTZWMTUuNzM5NkM0NC4wMDAxIDE1LjU2MzYgNDMuOTUzNyAxNS4zOTA3IDQzLjg2NTYgMTUuMjM4NEM0My43Nzc0IDE1LjA4NjIgNDMuNjUwNyAxNC45NTk4IDQzLjQ5ODEgMTQuODcyMkM0My4zNDU2IDE0Ljc4NDUgNDMuMTcyNiAxNC43Mzg3IDQyLjk5NjYgMTQuNzM5M0M0Mi44MjA3IDE0LjczOTkgNDIuNjQ4IDE0Ljc4NjkgNDIuNDk2IDE0Ljg3NTZMMzIgMjAuOTk5NiIgc3Ryb2tlPSIjMDAwMDAwIiBzdHJva2Utd2lkdGg9IjQiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIvPg0KPHBhdGggZD0iTTI4IDEySDhDNS43OTA4NiAxMiA0IDEzLjc5MDkgNCAxNlYzMkM0IDM0LjIwOTEgNS43OTA4NiAzNiA4IDM2SDI4QzMwLjIwOTEgMzYgMzIgMzQuMjA5MSAzMiAzMlYxNkMzMiAxMy43OTA5IDMwLjIwOTEgMTIgMjggMTJaIiBzdHJva2U9IiMwMDAwMDAiIHN0cm9rZS13aWR0aD0iNCIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIi8+DQo8L3N2Zz4NCg==';
 
@@ -76,7 +57,6 @@ const factory: BlockFactory = (BaseBlockClass, widgetApi) => {
 
     private doRender(): void {
       if (!this.root) return;
-      setPluginId(this.getAttribute('pluginid') || '');
       this.root.render(
         <KrogerVideoWidget
           division={this.getAttribute('division')   || ''}
@@ -94,7 +74,6 @@ const factory: BlockFactory = (BaseBlockClass, widgetApi) => {
 
     private doRenderEditor(): void {
       if (!this.editorRoot) return;
-      setPluginId(this.getAttribute('pluginid') || '');
       this.editorRoot.render(
         <EditorWrapper
           division={this.getAttribute('division')         || ''}
