@@ -10,7 +10,7 @@ import KrogerVideoWidget from './KrogerVideoWidget';
 import EditorWrapper from './EditorWrapper';
 import { configurationSchema, uiSchema } from './configuration-schema';
 import { injectArticleCoverImage } from './services/articleCoverService';
-import { setInstallationId, setStaffbaseBaseUrl } from './services/videoService';
+import { setInstallationId, setPluginId, setStaffbaseBaseUrl } from './services/videoService';
 import pkg from '../package.json';
 
 // Extract installation ID from the script's own src URL.
@@ -57,6 +57,7 @@ const factory: BlockFactory = (BaseBlockClass, widgetApi) => {
 
     private doRender(): void {
       if (!this.root) return;
+      setPluginId(this.getAttribute('pluginid') || '');
       this.root.render(
         <KrogerVideoWidget
           division={this.getAttribute('division')   || ''}
@@ -74,6 +75,7 @@ const factory: BlockFactory = (BaseBlockClass, widgetApi) => {
 
     private doRenderEditor(): void {
       if (!this.editorRoot) return;
+      setPluginId(this.getAttribute('pluginid') || '');
       this.editorRoot.render(
         <EditorWrapper
           division={this.getAttribute('division')         || ''}
@@ -104,7 +106,7 @@ const factory: BlockFactory = (BaseBlockClass, widgetApi) => {
 
     // ── Attribute changes ──────────────────────────────────────────────
     public static get observedAttributes(): string[] {
-      return ['division', 'videotitle', 'videourl', 'videoduration', 'videoexpiry', 'videothumb'];
+      return ['pluginid', 'division', 'videotitle', 'videourl', 'videoduration', 'videoexpiry', 'videothumb'];
     }
 
     public attributeChangedCallback(
@@ -120,7 +122,7 @@ const factory: BlockFactory = (BaseBlockClass, widgetApi) => {
 const blockDefinition: BlockDefinition = {
   name: 'kroger-division-video-v12',
   factory,
-  attributes: ['division', 'videotitle', 'videourl', 'videoduration', 'videoexpiry', 'videothumb'],
+  attributes: ['pluginid', 'division', 'videotitle', 'videourl', 'videoduration', 'videoexpiry', 'videothumb'],
   blockLevel: 'block',
   configurationSchema,
   uiSchema,

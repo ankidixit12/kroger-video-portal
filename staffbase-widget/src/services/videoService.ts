@@ -1,15 +1,19 @@
 declare const process: { env: Record<string, string> };
 
-let _staffbaseBase  = 'https://krogertest.staffbase.com';
-let _installationId = '6a3bd7361da609538cb79dac';
-
-// On localhost requests go through the webpack proxy (/api/kulus) to avoid CORS.
+// On localhost requests go through the webpack proxy to avoid CORS.
 // In production the direct Azure URL is used (Staffbase origin is allowed by the QUMU service).
 const _isLocalhost = typeof window !== 'undefined' &&
   (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+
+let _staffbaseBase  = 'https://krogertest.staffbase.com';
+let _installationId = '6a3bd7361da609538cb79dac';
+let _pluginId       = _isLocalhost ? '6a0cc22372fe006d424385a2' : '';
+
 const QUMU_BASE = _isLocalhost
   ? '/api/kulus'
   : 'https://staffbase-qumu-gfe9e3e8ced6g3cu.eastus2-01.azurewebsites.net/staffbase-qumu/kulus';
+
+const QUMU_TOKEN_BASE = 'https://staffbase-qumu-gfe9e3e8ced6g3cu.eastus2-01.azurewebsites.net/staffbase-qumu/api/token';
 
 export function setStaffbaseBaseUrl(url: string): void {
   if (url) _staffbaseBase = url.replace(/\/$/, '');
@@ -19,12 +23,37 @@ export function setInstallationId(id: string): void {
   if (id) _installationId = id;
 }
 
+export function setPluginId(id: string): void {
+  if (id) { _pluginId = id; _cachedToken = null; }
+}
+
 export const AUTH_HEADER: Record<string, string> = {};
 
 function basicAuthHeaders(extra?: Record<string, string>): Record<string, string> {
   const u = process.env.QUMU_USERNAME || '';
   const p = process.env.QUMU_PASSWORD || '';
   return { Authorization: 'Basic ' + btoa(u + ':' + p), ...extra };
+}
+
+// ─── Token ────────────────────────────────────────────────────────────────────
+
+let _cachedToken: string | null = null;
+
+async function fetchQumuToken(): Promise<string> {
+  if (_cachedToken) return _cachedToken;
+  const res = await fetch(`${QUMU_TOKEN_BASE}/${_pluginId}`, {
+    headers: basicAuthHeaders(),
+    credentials: 'include',
+  });
+  if (!res.ok) throw new Error('fetchQumuToken HTTP ' + res.status);
+  const json = await res.json();
+  _cachedToken = json.jwt as string;
+  return _cachedToken;
+}
+
+async function apiHeaders(extra?: Record<string, string>): Promise<Record<string, string>> {
+  const token = await fetchQumuToken();
+  return { ...basicAuthHeaders(), Authorization_jwt: token, ...extra };
 }
 
 // ─── Interfaces ───────────────────────────────────────────────────────────────
@@ -140,9 +169,9 @@ export async function fetchVideos(params?: {
   const query = new URLSearchParams();
   query.set('offset', String(params?.offset ?? 0));
   query.set('limit',  String(params?.limit  ?? 10));
-  if (params?.search) query.set('search', `title,is,${params.search}`);
+  if (params?.search) query.set('search', `title,CONTAINS,${params.search}`);
 
-  const res = await fetch(`${QUMU_BASE}?${query}`, { headers: basicAuthHeaders(), credentials: 'include' });
+  const res = await fetch(`${QUMU_BASE}?${query}`, { headers: await apiHeaders(), credentials: 'include' });
   if (!res.ok) throw new Error('fetchVideos HTTP ' + res.status);
   const data = await res.json();
   return { items: (data.kulus || []).map(mapKuluToVideoItem), total: data.total ?? 0 };
@@ -165,7 +194,7 @@ export async function fetchVideosByFilter(params: {
   const url = `${QUMU_BASE}?${query}`;
   console.log('[KrogerWidget] fetchVideosByFilter GET', url);
 
-  const res = await fetch(url, { headers: basicAuthHeaders(), credentials: 'include' });
+  const res = await fetch(url, { headers: await apiHeaders(), credentials: 'include' });
   const raw = await res.text();
   console.log('[KrogerWidget] filterResponse', res.status, raw.slice(0, 500));
   if (res.status === 404) return { items: [], total: 0 };
@@ -176,7 +205,7 @@ export async function fetchVideosByFilter(params: {
 
 export async function fetchMasterData(titles: string[]): Promise<MetadataType[]> {
   const url = `${QUMU_BASE}/masterdata/kulutypes?titles=${encodeURIComponent(titles.join(','))}`;
-  const res = await fetch(url, { headers: basicAuthHeaders(), credentials: 'include' });
+  const res = await fetch(url, { headers: await apiHeaders(), credentials: 'include' });
   if (!res.ok) throw new Error('fetchMasterData HTTP ' + res.status);
   const data = await res.json();
   return data.metadata || [];
