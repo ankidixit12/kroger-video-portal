@@ -7,7 +7,8 @@ const _isLocalhost = typeof window !== 'undefined' &&
 
 let _staffbaseBase  = 'https://krogertest.staffbase.com';
 let _installationId = '6a3bd7361da609538cb79dac';
-let _pluginId       = _isLocalhost ? '6a0cc22372fe006d424385a2' : '';
+// let _pluginId       = _isLocalhost ? '6a0cc22372fe006d424385a2' : '';
+let _pluginId       ='6a0cc22372fe006d424385a2';
 
 const QUMU_BASE = _isLocalhost
   ? '/api/kulus'
