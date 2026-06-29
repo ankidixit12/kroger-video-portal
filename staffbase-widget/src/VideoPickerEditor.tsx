@@ -151,8 +151,10 @@ export default function VideoPickerEditor({ onSelect, onCancel }: Props) {
 
     const rules: PlaylistRule[] = [];
     if (divOptGuid && divMeta) {
-      const [optGuid, optValue] = divOptGuid.split('|');
-      rules.push({ fieldGuid: divMeta.guid, fieldTitle: 'Division', optionGuid: optGuid, optionValue: optValue });
+      const parts    = divOptGuid.split('|');
+      const optGuid  = parts[0] || '';
+      const optValue = parts[1] || '';
+      if (optGuid) rules.push({ fieldGuid: divMeta.guid, fieldTitle: 'Division', optionGuid: optGuid, optionValue: optValue });
     }
 
     const promise: Promise<FetchResult> = rules.length > 0

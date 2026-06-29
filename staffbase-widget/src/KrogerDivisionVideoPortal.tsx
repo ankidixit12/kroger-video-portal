@@ -27,13 +27,14 @@ function escHtml(s: string): string {
 
 function isExpired(iso?: string): boolean {
   if (!iso) return false;
-  return new Date(iso).getTime() < Date.now();
+  const t = new Date(iso).getTime();
+  return !Number.isNaN(t) && t < Date.now();
 }
 
 function isExpiringSoon(iso?: string): boolean {
   if (!iso) return false;
   const ms = new Date(iso).getTime() - Date.now();
-  return ms > 0 && ms / 86400000 < 90;
+  return !Number.isNaN(ms) && ms > 0 && ms / 86400000 < 90;
 }
 
 function highlight(text: string, q: string): string {
@@ -107,7 +108,7 @@ function VideoCard({ video, query, selected, onSelect }: VideoCardProps) {
           />
         ) : (
           <button
-            onClick={e => { e.stopPropagation(); if (ytId) setPlaying(true); else window.open(video.videoUrl, '_blank', 'noopener,noreferrer'); }}
+            onClick={e => { e.stopPropagation(); if (ytId) setPlaying(true); else { try { window.open(video.videoUrl, '_blank', 'noopener,noreferrer'); } catch { /* popup blocked or invalid URL */ } } }}
             style={{ position: 'absolute', inset: 0 as any, width: '100%', height: '100%', background: 'transparent', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
             aria-label={`Play ${video.title}`}
           >
@@ -220,14 +221,14 @@ const KrogerDivisionVideoPortal: React.FC<Props> = ({ widgettitle }) => {
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   /* Load from API */
-  function loadVideos(cat: string) {
+  function loadVideos() {
     setLoading(true); setQuery(''); setApiError(false); setPage(1);
-    fetchVideos({ category: cat || undefined })
-      .then(data => { setAllVideos(data); setFiltered(data); setLoading(false); })
+    fetchVideos({ limit: 200 })
+      .then(result => { setAllVideos(result.items); setFiltered(result.items); setLoading(false); })
       .catch(() => { setAllVideos([]); setFiltered([]); setApiError(true); setLoading(false); });
   }
 
-  useEffect(() => { loadVideos(category); }, [category]);
+  useEffect(() => { loadVideos(); }, [category]);
 
   /* Filter on search — debounced 100 ms */
   const onSearch = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
@@ -240,7 +241,6 @@ const KrogerDivisionVideoPortal: React.FC<Props> = ({ widgettitle }) => {
       setFiltered(q
         ? allVideos.filter(v =>
             (v.title   || '').toLowerCase().includes(q) ||
-            (v.series  || '').toLowerCase().includes(q) ||
             (v.author  || '').toLowerCase().includes(q) ||
             (v.category|| '').toLowerCase().includes(q))
         : allVideos
@@ -313,7 +313,7 @@ const KrogerDivisionVideoPortal: React.FC<Props> = ({ widgettitle }) => {
             <span style={{ fontSize: '0.85rem', color: '#9ca3af' }}>The video library is currently unavailable.</span>
             <div style={{ marginTop: 20 }}>
               <button
-                onClick={() => loadVideos(category)}
+                onClick={() => loadVideos()}
                 style={{ padding: '9px 28px', borderRadius: 24, border: 'none', background: '#074085', color: '#fff', fontSize: '0.875rem', fontWeight: 600, cursor: 'pointer' }}
               >
                 Try Again
@@ -366,7 +366,7 @@ const KrogerDivisionVideoPortal: React.FC<Props> = ({ widgettitle }) => {
           disabled={!selectedId}
           onClick={() => {
             if (selectedVideo) {
-              injectArticleCoverImage(selectedVideo.videoUrl);
+              try { injectArticleCoverImage(selectedVideo.videoUrl); } catch { /* non-critical */ }
             }
           }}
           style={{ padding: '9px 22px', borderRadius: 8, border: 'none', background: selectedId ? '#074085' : '#9ca3af', color: '#fff', fontSize: '0.875rem', fontWeight: 600, cursor: selectedId ? 'pointer' : 'not-allowed', opacity: selectedId ? 1 : 0.65 }}

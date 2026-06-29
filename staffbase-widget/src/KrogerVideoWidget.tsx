@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 
 function toEmbed(url: string): string {
   try {
@@ -26,9 +26,9 @@ const S: Record<string, React.CSSProperties> = {
 };
 
 export default function KrogerVideoWidget({ division, videotitle, videourl }: Props) {
-  if (!videourl) {
-    return null;
-  }
+  const [iframeError, setIframeError] = useState(false);
+
+  if (!videourl) return null;
 
   return (
     <div style={S.wrap}>
@@ -44,13 +44,20 @@ export default function KrogerVideoWidget({ division, videotitle, videourl }: Pr
           </div>
         </div>
         <div style={S.embedWrap}>
-          <iframe
-            style={S.iframe}
-            src={toEmbed(videourl)}
-            title={videotitle || 'Training Video'}
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-            allowFullScreen
-          />
+          {iframeError ? (
+            <div style={{ position: 'absolute', inset: 0 as any, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#111', color: '#9ca3af', fontSize: 13 }}>
+              Video unavailable
+            </div>
+          ) : (
+            <iframe
+              style={S.iframe}
+              src={toEmbed(videourl)}
+              title={videotitle || 'Training Video'}
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+              allowFullScreen
+              onError={() => setIframeError(true)}
+            />
+          )}
         </div>
       </div>
     </div>

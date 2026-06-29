@@ -24,7 +24,7 @@ export function setInstallationId(id: string): void {
 }
 
 export function setPluginId(id: string): void {
-  if (id) { _pluginId = id; _cachedToken = null; }
+  if (id && id !== _pluginId) { _pluginId = id; _cachedToken = null; }
 }
 
 export const AUTH_HEADER: Record<string, string> = {};
@@ -40,6 +40,7 @@ function basicAuthHeaders(extra?: Record<string, string>): Record<string, string
 let _cachedToken: string | null = null;
 
 async function fetchQumuToken(): Promise<string> {
+  if (!_pluginId) throw new Error('QUMU plugin ID is not configured');
   if (_cachedToken) return _cachedToken;
   const res = await fetch(`${QUMU_TOKEN_BASE}/${_pluginId}`, {
     headers: basicAuthHeaders(),
@@ -47,13 +48,25 @@ async function fetchQumuToken(): Promise<string> {
   });
   if (!res.ok) throw new Error('fetchQumuToken HTTP ' + res.status);
   const json = await res.json();
-  _cachedToken = json.jwt as string;
+  const jwt = json?.jwt;
+  if (!jwt || typeof jwt !== 'string') throw new Error('fetchQumuToken: missing or invalid JWT in response');
+  _cachedToken = jwt;
   return _cachedToken;
 }
 
 async function apiHeaders(extra?: Record<string, string>): Promise<Record<string, string>> {
   const token = await fetchQumuToken();
   return { ...basicAuthHeaders(), Authorization_jwt: token, ...extra };
+}
+
+// Clears the cached token and retries once on 401 Unauthorized.
+async function apiFetch(url: string): Promise<Response> {
+  let res = await fetch(url, { headers: await apiHeaders(), credentials: 'include' });
+  if (res.status === 401) {
+    _cachedToken = null;
+    res = await fetch(url, { headers: await apiHeaders(), credentials: 'include' });
+  }
+  return res;
 }
 
 // ─── Interfaces ───────────────────────────────────────────────────────────────
@@ -134,6 +147,10 @@ function safeString(val: any): string {
   return String(val);
 }
 
+function safeMapKulu(k: any): VideoItem | null {
+  try { return mapKuluToVideoItem(k); } catch { return null; }
+}
+
 function mapKuluToVideoItem(k: any): VideoItem {
   const division    = getMeta(k.metadata, 'Division') || '';
   const category    = getMeta(k.metadata, 'Category') || 'Corporate';
@@ -171,10 +188,13 @@ export async function fetchVideos(params?: {
   query.set('limit',  String(params?.limit  ?? 10));
   if (params?.search) query.set('search', `title,CONTAINS,${params.search}`);
 
-  const res = await fetch(`${QUMU_BASE}?${query}`, { headers: await apiHeaders(), credentials: 'include' });
+  const res = await apiFetch(`${QUMU_BASE}?${query}`);
   if (!res.ok) throw new Error('fetchVideos HTTP ' + res.status);
   const data = await res.json();
-  return { items: (data.kulus || []).map(mapKuluToVideoItem), total: data.total ?? 0 };
+  return {
+    items: (Array.isArray(data.kulus) ? data.kulus : []).map(safeMapKulu).filter((v: VideoItem | null): v is VideoItem => v !== null),
+    total: data.total ?? 0,
+  };
 }
 
 export async function fetchVideosByFilter(params: {
@@ -192,21 +212,22 @@ export async function fetchVideosByFilter(params: {
   if (searchParts.length > 0) query.set('search', searchParts.join(';'));
 
   const url = `${QUMU_BASE}?${query}`;
-  console.log('[KrogerWidget] fetchVideosByFilter GET', url);
-
-  const res = await fetch(url, { headers: await apiHeaders(), credentials: 'include' });
-  const raw = await res.text();
-  console.log('[KrogerWidget] filterResponse', res.status, raw.slice(0, 500));
+  const res = await apiFetch(url);
   if (res.status === 404) return { items: [], total: 0 };
   if (!res.ok) throw new Error('fetchVideosByFilter HTTP ' + res.status);
-  const data = JSON.parse(raw);
-  return { items: (data.kulus || []).map(mapKuluToVideoItem), total: data.total ?? 0 };
+  const raw = await res.text();
+  let data: any;
+  try { data = JSON.parse(raw); } catch { throw new Error('fetchVideosByFilter: invalid JSON response'); }
+  return {
+    items: (Array.isArray(data.kulus) ? data.kulus : []).map(safeMapKulu).filter((v: VideoItem | null): v is VideoItem => v !== null),
+    total: data.total ?? 0,
+  };
 }
 
 export async function fetchMasterData(titles: string[]): Promise<MetadataType[]> {
   const url = `${QUMU_BASE}/masterdata/kulutypes?titles=${encodeURIComponent(titles.join(','))}`;
-  const res = await fetch(url, { headers: await apiHeaders(), credentials: 'include' });
+  const res = await apiFetch(url);
   if (!res.ok) throw new Error('fetchMasterData HTTP ' + res.status);
   const data = await res.json();
-  return data.metadata || [];
+  return Array.isArray(data?.metadata) ? data.metadata : [];
 }
