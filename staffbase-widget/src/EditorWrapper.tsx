@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import VideoPickerEditor from './VideoPickerEditor';
 
@@ -68,6 +68,30 @@ const S: Record<string, React.CSSProperties> = {
 export default function EditorWrapper({ division: _division, videotitle, videourl, videoduration: _videoduration, videoexpiry, videothumb, onSelect }: Props) {
   const [open, setOpen]       = useState(false);
   const [hovered, setHovered] = useState(false);
+  const [cardWidth, setCardWidth] = useState<number | null>(null);
+  const wrapRef  = useRef<HTMLDivElement>(null);
+  const dragRef  = useRef<{ startX: number; startW: number } | null>(null);
+
+  const onResizeStart = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const rect = wrapRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    dragRef.current = { startX: e.clientX, startW: rect.width };
+
+    function onMove(ev: MouseEvent) {
+      if (!dragRef.current) return;
+      const newW = Math.max(220, dragRef.current.startW + (ev.clientX - dragRef.current.startX));
+      setCardWidth(newW);
+    }
+    function onUp() {
+      dragRef.current = null;
+      document.removeEventListener('mousemove', onMove, { capture: true });
+      document.removeEventListener('mouseup',   onUp,   { capture: true });
+    }
+    document.addEventListener('mousemove', onMove, { capture: true });
+    document.addEventListener('mouseup',   onUp,   { capture: true });
+  }, []);
 
   function handleSelect(d: string, t: string, u: string, dur: string, exp: string, th: string) {
     onSelect(d, t, u, dur, exp, th);
@@ -83,9 +107,14 @@ export default function EditorWrapper({ division: _division, videotitle, videour
   const expiring = isExpiringSoon(videoexpiry);
 
   return (
-    <div style={S.wrap} onClick={stop} onMouseDown={stop} onMouseUp={stop} onKeyDown={stop}>
+    <div
+      ref={wrapRef}
+      style={{ ...S.wrap, ...(cardWidth ? { width: cardWidth } : {}), position: 'relative' }}
+      onClick={stop} onMouseDown={stop} onMouseUp={stop} onKeyDown={stop}
+    >
 
       {videourl ? (
+        <>
         <div style={S.selectedBody}>
           <div
             style={{ ...S.card, border: hovered ? '2px solid #1a3c8f' : '2px solid transparent', transition: 'border-color 0.15s', boxShadow: hovered ? '0 4px 16px rgba(26,60,143,0.2)' : '0 1px 6px rgba(0,0,0,0.1)' }}
@@ -135,8 +164,23 @@ export default function EditorWrapper({ division: _division, videotitle, videour
               )}
             </div>
           </div>
-
         </div>
+
+        {/* Resize handle */}
+        <div
+          title="Drag to resize"
+          onMouseDown={onResizeStart}
+          style={{
+            position: 'absolute', bottom: 4, right: 4,
+            width: 18, height: 18, cursor: 'se-resize', zIndex: 20,
+            display: 'flex', alignItems: 'flex-end', justifyContent: 'flex-end',
+          }}
+        >
+          <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+            <path d="M9 1L1 9M9 5L5 9M9 9H9" stroke="#9ca3af" strokeWidth="1.5" strokeLinecap="round"/>
+          </svg>
+        </div>
+        </>
       ) : (
         <div style={S.emptyBox}>
           <div style={S.emptyIcon}>
