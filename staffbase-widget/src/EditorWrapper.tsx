@@ -42,7 +42,7 @@ const S: Record<string, React.CSSProperties> = {
   emptyText:  { flex: 1 },
   emptyTitle: { fontFamily: 'Inter, sans-serif', fontSize: 16, fontStyle: 'normal', fontWeight: 600, lineHeight: '24px', letterSpacing: '-0.312px', color: '#364153', margin: 0 },
   emptyDesc:  { fontFamily: 'Inter, sans-serif', fontSize: 14, fontStyle: 'normal', fontWeight: 400, lineHeight: '20px', letterSpacing: '-0.15px', color: '#6A7282', margin: '2px 0 0' },
-  selectBtn:  { flexShrink: 0, padding: '9px 20px', background: '#074085', color: '#fff', border: 'none', borderRadius: 5, fontSize: 14, fontWeight: 600, cursor: 'pointer' },
+  selectBtn:  { flexShrink: 0, padding: '8.5px 29px 7.5px 29px', background: '#074085', color: '#fff', border: 'none', borderRadius: 5, fontSize: 14, fontWeight: 500, cursor: 'pointer' },
 
   /* Selected state — card */
   selectedBody: { padding: '16px' },
