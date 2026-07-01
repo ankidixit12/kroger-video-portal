@@ -82,7 +82,7 @@ const S: Record<string, React.CSSProperties> = {
   durBadge:    { position: 'absolute' as any, bottom: 6, right: 6, background: 'rgba(0,0,0,0.72)', color: '#fff', fontSize: 10, fontWeight: 600, padding: '2px 6px', borderRadius: 4, pointerEvents: 'none' as any },
   wdBadge:     { position: 'absolute' as any, top: 6, right: 6, background: 'rgba(185,28,28,0.9)', color: '#fff', fontSize: 9, fontWeight: 700, padding: '2px 6px', borderRadius: 4, letterSpacing: '0.04em', pointerEvents: 'none' as any },
   cardInfo:    { padding: '10px 12px 12px', display: 'flex', flexDirection: 'column' as any, gap: 5, flex: 1, overflow: 'hidden' },
-  cardTitle:   { fontSize: 12, fontWeight: 700, color: '#1E2939', lineHeight: 15, display: '-webkit-box' as any, WebkitLineClamp: 2 as any, WebkitBoxOrient: 'vertical' as any, overflow: 'hidden', marginBottom: 2 , fontFamily: 'Inter'},
+  cardTitle:   { fontSize: 12, fontWeight: 700, color: '#1E2939', lineHeight: 1.5, display: '-webkit-box' as any, WebkitLineClamp: 2 as any, WebkitBoxOrient: 'vertical' as any, overflow: 'hidden', marginBottom: 2 , fontFamily: 'Inter'},
   cardDesc:    { fontSize: 12, fontWeight: 400, color: '#4A5565', lineHeight: 1.4, display: '-webkit-box' as any, WebkitLineClamp: 2 as any, WebkitBoxOrient: 'vertical' as any, overflow: 'hidden', marginBottom: 4, fontFamily: 'Inter' },
   cardMeta:    { fontSize: 11, color: '#6b7280', lineHeight: 1.3, marginBottom: 4, whiteSpace: 'nowrap' as any, overflow: 'hidden', textOverflow: 'ellipsis' },
   metaRow:     { display: 'flex', justifyContent: 'space-between', fontSize: 11, lineHeight: 1.4 },
