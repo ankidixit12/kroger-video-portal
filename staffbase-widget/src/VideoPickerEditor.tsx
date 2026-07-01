@@ -74,7 +74,7 @@ const S: Record<string, React.CSSProperties> = {
   grid:        { display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0,1fr))', gridAutoRows: CARD_HEIGHT, gap: 12, padding: '12px 14px', flex: 1, overflowY: 'auto' as any, minHeight: 0 },
   card:        { border: '1.5px solid #e5e7eb', borderRadius: 8, cursor: 'pointer', background: '#fff', display: 'flex', flexDirection: 'column' as any, transition: 'border-color 0.15s', overflow: 'hidden', height: CARD_HEIGHT },
   cardSel:     { border: '2px solid #1a3c8f', borderRadius: 8, cursor: 'pointer', background: '#fff', display: 'flex', flexDirection: 'column' as any, overflow: 'hidden', height: '100%' },
-  thumbWrap:   { position: 'relative' as any, height: 180, overflow: 'hidden', backgroundSize: 'cover', backgroundPosition: 'center', flexShrink: 0 },
+  thumbWrap:   { position: 'relative' as any, height: 160, overflow: 'hidden', backgroundSize: 'cover', backgroundPosition: 'center', flexShrink: 0 },
   radioRing:   { position: 'absolute' as any, top: 8, left: 8, width: 20, height: 20, borderRadius: '50%', background: 'rgba(255,255,255,0.92)', border: '2px solid #d1d5db', boxShadow: '0 1px 4px rgba(0,0,0,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2 },
   radioFill:   { position: 'absolute' as any, top: 8, left: 8, width: 20, height: 20, borderRadius: '50%', background: '#003087', border: '2px solid #003087', zIndex: 2, display: 'flex', alignItems: 'center', justifyContent: 'center' },
   radioDot:    { width: 7, height: 7, borderRadius: '50%', background: '#fff' },
