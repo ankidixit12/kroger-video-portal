@@ -373,9 +373,9 @@ export default function VideoPickerEditor({ onSelect, onCancel }: Props) {
                       {expired ? (
                         <span style={S.metaExp}>{fmtDate(expiryDate)}</span>
                       ) : expiring ? (
-                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, border: '1px solid #FEE685', borderRadius: 4, paddingTop: 0, paddingBottom: 0, paddingLeft: 0, paddingRight: 3, background: '#FFFBEB' }}>
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, border: '1px solid #FEE685', borderRadius: 4, paddingTop: 0, paddingBottom: 0, paddingLeft: '4px', paddingRight: 3, background: '#FFFBEB' }}>
                           <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#FE9A00', flexShrink: 0 }} />
-                          <span style={{ color: '#BB4D00', fontSize: '12px', fontWeight: 500, whiteSpace: 'nowrap' as const }}>Expiring soon</span>
+                          <span style={{ color: '#BB4D00', fontSize: '12px', fontWeight: 500, marginRight:"10px", whiteSpace: 'nowrap' as const }}>Expiring soon</span>
                           <span style={{ color: '#E17100', fontSize: '12px', fontWeight: 500 }}>{fmtDate(expiryDate)}</span>
                         </span>
                       ) : (
