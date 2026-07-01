@@ -60,8 +60,7 @@ const S: Record<string, React.CSSProperties> = {
   backdrop:   { position: 'fixed' as any, inset: 0, background: 'rgba(0,0,0,0.55)', zIndex: 99999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 },
   modal:      { background: '#fff', borderRadius: 14, width: '100%', maxWidth: 1100, height: '96vh', display: 'flex', flexDirection: 'column' as any, overflow: 'hidden', boxShadow: '0 24px 70px rgba(0,0,0,0.35)' },
   modalHdr:   { display: 'flex', alignItems: 'center', padding: '14px 18px', borderBottom: '1px solid #e5e7eb', flexShrink: 0 },
-  modalTtl:   { fontSize: 15, fontWeight: 700, color: '#111827', flex: 1 },
-  closeBtn:   { width: 28, height: 28, border: 'none', background: 'transparent', fontSize: 22, lineHeight: 1, cursor: 'pointer', color: '#6b7280', borderRadius: 6 },
+  modalTtl:   { color: '#364153', fontFamily: 'Inter, sans-serif', fontSize: 18, fontStyle: 'normal', fontWeight: 600, lineHeight: '28px', letterSpacing: '-0.439px', flex: 1 },
   modalBody:  { flex: 1, minHeight: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column' as any },
 };
 
@@ -203,7 +202,6 @@ export default function EditorWrapper({ division: _division, videotitle, videour
           <div style={S.modal} onClick={stop} onMouseDown={stop} onKeyDown={stop}>
             <div style={S.modalHdr}>
               <span style={S.modalTtl}>Select a Video</span>
-              <button style={S.closeBtn} onClick={e => { stop(e); setOpen(false); }}>×</button>
             </div>
             <div style={S.modalBody}>
               <VideoPickerEditor
