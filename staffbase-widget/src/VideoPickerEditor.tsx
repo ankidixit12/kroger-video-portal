@@ -10,6 +10,7 @@ import {
 } from './services/videoService';
 
 const PAGE_SIZE = 10;
+const CARD_HEIGHT = '343.234px';
 
 function getExpiryDate(v: VideoItem): string {
   return (v.withdrawOn || v.expiryDate || '').trim();
@@ -70,10 +71,10 @@ const S: Record<string, React.CSSProperties> = {
   select:      { appearance: 'none' as any, display: 'inline-block', width: 'calc((100% - 64px) / 4)', flexShrink: 0, padding: '7px 28px 7px 12px', border: '1.5px solid #1a3c8f', borderRadius: 8, fontSize: 13, color: '#1a3c8f', fontWeight: 600, background: "#fff url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24'%3E%3Cpath fill='none' stroke='%231a3c8f' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round' d='M6 9l6 6 6-6'/%3E%3C/svg%3E\") no-repeat right 10px center", cursor: 'pointer', boxSizing: 'border-box' as any, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as any },
   searchWrap:  { position: 'relative' as any, flex: 1 },
   searchInput: { width: '100%', padding: '7px 14px', border: '1.5px solid #1a3c8f', borderRadius: 8, fontSize: 13, background: '#fff', color: '#111827', boxSizing: 'border-box' as any },
-  grid:        { display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0,1fr))', gridAutoRows: '260px', gap: 12, padding: '12px 14px', flex: 1, overflowY: 'auto' as any, minHeight: 0 },
-  card:        { border: '1.5px solid #e5e7eb', borderRadius: 8, cursor: 'pointer', background: '#fff', display: 'flex', flexDirection: 'column' as any, transition: 'border-color 0.15s', overflow: 'hidden', height: '100%' },
-  cardSel:     { border: '2px solid #1a3c8f', borderRadius: 8, cursor: 'pointer', background: '#fff', display: 'flex', flexDirection: 'column' as any, overflow: 'hidden', height: '100%' },
-  thumbWrap:   { position: 'relative' as any, height: 145, overflow: 'hidden', backgroundSize: 'cover', backgroundPosition: 'center', flexShrink: 0 },
+  grid:        { display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0,1fr))', gridAutoRows: CARD_HEIGHT, gap: 12, padding: '12px 14px', flex: 1, overflowY: 'auto' as any, minHeight: 0 },
+  card:        { border: '1.5px solid #e5e7eb', borderRadius: 8, cursor: 'pointer', background: '#fff', display: 'flex', flexDirection: 'column' as any, transition: 'border-color 0.15s', overflow: 'hidden', height: CARD_HEIGHT },
+  cardSel:     { border: '2px solid #1a3c8f', borderRadius: 8, cursor: 'pointer', background: '#fff', display: 'flex', flexDirection: 'column' as any, overflow: 'hidden', height: CARD_HEIGHT },
+  thumbWrap:   { position: 'relative' as any, height: 180, overflow: 'hidden', backgroundSize: 'cover', backgroundPosition: 'center', flexShrink: 0 },
   radioRing:   { position: 'absolute' as any, top: 8, left: 8, width: 20, height: 20, borderRadius: '50%', background: 'rgba(255,255,255,0.92)', border: '2px solid #d1d5db', boxShadow: '0 1px 4px rgba(0,0,0,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2 },
   radioFill:   { position: 'absolute' as any, top: 8, left: 8, width: 20, height: 20, borderRadius: '50%', background: '#003087', border: '2px solid #003087', zIndex: 2, display: 'flex', alignItems: 'center', justifyContent: 'center' },
   radioDot:    { width: 7, height: 7, borderRadius: '50%', background: '#fff' },
