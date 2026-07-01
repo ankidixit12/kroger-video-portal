@@ -10,7 +10,7 @@ import {
 } from './services/videoService';
 
 const PAGE_SIZE = 10;
-const CARD_HEIGHT = '270px';
+const CARD_HEIGHT = '290px';
 
 function getExpiryDate(v: VideoItem): string {
   return (v.withdrawOn || v.expiryDate || '').trim();
