@@ -10,7 +10,7 @@ import {
 } from './services/videoService';
 
 const PAGE_SIZE = 10;
-const CARD_HEIGHT = '343.234px';
+const CARD_HEIGHT = '300px';
 
 function getExpiryDate(v: VideoItem): string {
   return (v.withdrawOn || v.expiryDate || '').trim();
@@ -83,13 +83,13 @@ const S: Record<string, React.CSSProperties> = {
   durBadge:    { position: 'absolute' as any, bottom: 6, right: 6, background: 'rgba(0,0,0,0.72)', color: '#fff', fontSize: 10, fontWeight: 600, padding: '2px 6px', borderRadius: 4, pointerEvents: 'none' as any },
   wdBadge:     { position: 'absolute' as any, top: 6, right: 6, background: 'rgba(185,28,28,0.9)', color: '#fff', fontSize: 9, fontWeight: 700, padding: '2px 6px', borderRadius: 4, letterSpacing: '0.04em', pointerEvents: 'none' as any },
   cardInfo:    { padding: '10px 12px 12px', display: 'flex', flexDirection: 'column' as any, gap: 5, flex: 1, overflow: 'hidden' },
-  cardTitle:   { fontSize: 12, fontWeight: 700, color: '#1E2939', lineHeight: 1.5, display: '-webkit-box' as any, WebkitLineClamp: 2 as any, WebkitBoxOrient: 'vertical' as any, overflow: 'hidden', marginBottom: 2 , fontFamily: 'Inter'},
-  cardDesc:    { fontSize: 12, fontWeight: 400, color: '#4A5565', lineHeight: 1.4, display: '-webkit-box' as any, WebkitLineClamp: 2 as any, WebkitBoxOrient: 'vertical' as any, overflow: 'hidden', marginBottom: 4, fontFamily: 'Inter' },
+  cardTitle:   { fontSize: 12, fontWeight: 700, color: '#1E2939', lineHeight: '16px', display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const, marginBottom: 2, fontFamily: 'Inter, sans-serif' },
+  cardDesc:    { fontSize: 12, fontWeight: 400, color: '#4A5565', lineHeight: 1.4, display: '-webkit-box' as any, WebkitLineClamp: 2 as any, WebkitBoxOrient: 'vertical' as any, overflow: 'hidden', marginBottom: 4, fontFamily: 'Inter, sans-serif' },
   cardMeta:    { fontSize: 11, color: '#6b7280', lineHeight: 1.3, marginBottom: 4, whiteSpace: 'nowrap' as any, overflow: 'hidden', textOverflow: 'ellipsis' },
   metaRow:     { display: 'flex', justifyContent: 'space-between', alignItems: 'center', minHeight: 16, lineHeight: '16px' },
-  metaLabel:   { color: '#6A7282', fontFamily: 'Inter', fontSize: 12, fontStyle: 'normal', fontWeight: 400, lineHeight: '16px' },
-  metaVal:     { color: '#1E2939', fontFamily: 'Inter', fontSize: 12, fontStyle: 'normal', fontWeight: 500, lineHeight: '16px' },
-  metaExp:     { color: '#1E2939', fontFamily: 'Inter', fontSize: 12, fontStyle: 'normal', fontWeight: 500, lineHeight: '16px' },
+  metaLabel:   { color: '#6A7282', fontFamily: 'Inter, sans-serif', fontSize: 12, fontStyle: 'normal', fontWeight: 400, lineHeight: '16px' },
+  metaVal:     { color: '#1E2939', fontFamily: 'Inter, sans-serif', fontSize: 12, fontStyle: 'normal', fontWeight: 500, lineHeight: '16px' },
+  metaExp:     { color: '#1E2939', fontFamily: 'Inter, sans-serif', fontSize: 12, fontStyle: 'normal', fontWeight: 500, lineHeight: '16px' },
   pagination:  { display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 },
   pgBtn:       { width: 28, height: 28, border: 'none', borderRadius: '50%', background: '#fff', fontSize: 12, color: '#374151', cursor: 'pointer', padding: 0 },
   pgActive:    { width: 28, height: 28, border: '1.5px solid #003087', borderRadius: '50%', background: '#003087', fontSize: 12, color: '#fff', fontWeight: 700, cursor: 'pointer', padding: 0 },
@@ -374,9 +374,9 @@ export default function VideoPickerEditor({ onSelect, onCancel }: Props) {
                         <span style={S.metaExp}>{fmtDate(expiryDate)}</span>
                       ) : expiring ? (
                         <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, border: '1px solid #FEE685', borderRadius: 4, paddingTop: 0, paddingBottom: 0, paddingLeft: 0, paddingRight: 3, background: '#FFFBEB' }}>
-                          <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#d97706', flexShrink: 0 }} />
-                          <span style={{ color: '#d97706', fontSize: 9, fontWeight: 700, whiteSpace: 'nowrap' as const }}>Expiring soon</span>
-                          <span style={{ color: '#d97706', fontWeight: 600 }}>{fmtDate(expiryDate)}</span>
+                          <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#FE9A00', flexShrink: 0 }} />
+                          <span style={{ color: '#BB4D00', fontSize: '12px', fontWeight: 500, whiteSpace: 'nowrap' as const }}>Expiring soon</span>
+                          <span style={{ color: '#E17100', fontSize: '12px', fontWeight: 500 }}>{fmtDate(expiryDate)}</span>
                         </span>
                       ) : (
                         <span style={S.metaVal}>{fmtDate(expiryDate)}</span>
