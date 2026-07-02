@@ -40,7 +40,7 @@ function isExpiringSoon(d: string): boolean {
   if (Number.isNaN(t)) return false;
   const now = Date.now();
   const sixMonthsFromNow = new Date();
-  sixMonthsFromNow.setMonth(sixMonthsFromNow.getMonth() + 6);
+  sixMonthsFromNow.setMonth(sixMonthsFromNow.getMonth() + 5);
   return t >= now && t <= sixMonthsFromNow.getTime();
 }
 
