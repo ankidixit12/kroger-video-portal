@@ -56,7 +56,7 @@ const S: Record<string, React.CSSProperties> = {
   iconBtn:      { width: 36, height: 36, borderRadius: 8, background: 'rgba(255,255,255,0.95)', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#374151', boxShadow: '0 1px 6px rgba(0,0,0,0.18)' },
   durBadge:     { position: 'absolute' as any, bottom: 8, right: 8, background: 'rgba(0,0,0,0.75)', color: '#fff', fontSize: 13, fontWeight: 700, padding: '3px 8px', borderRadius: 4 },
   cardInfo:     { padding: '10px 12px 12px' },
-  videoTitle:   { fontSize: 15, fontWeight: 700, color: '#111827', margin: '0 0 4px', lineHeight: 1.3 },
+  videoTitle:   { fontSize: 14, fontWeight: 500, color: '#1E2939', margin: '0 0 4px', lineHeight: 1.3 },
   expiryText:   { fontSize: 13, fontWeight: 600, margin: 0 },
 
   /* Modal */
@@ -159,7 +159,7 @@ export default function EditorWrapper({ division: _division, videotitle, videour
                     <span style={{ color: '#d97706', fontSize: 11, fontWeight: 600 }}>{fmtDate(videoexpiry)}</span>
                   </span>
                 ) : (
-                  <p style={{ ...S.expiryText, color: '#9ca3af' }}>
+                  <p style={{ ...S.expiryText, color: '#E17100', fontSize: 12, fontWeight: 600}}>
                     Expires: {fmtDate(videoexpiry)}
                   </p>
                 )
