@@ -104,7 +104,7 @@ const factory: BlockFactory = (BaseBlockClass, widgetApi) => {
 
     // ── Attribute changes ──────────────────────────────────────────────
     public static get observedAttributes(): string[] {
-      return ['pluginid', 'division', 'videotitle', 'videourl', 'videoduration', 'videoexpiry', 'videothumb'];
+      return ['division', 'videotitle', 'videourl', 'videoduration', 'videoexpiry', 'videothumb'];
     }
 
     public attributeChangedCallback(
@@ -120,7 +120,7 @@ const factory: BlockFactory = (BaseBlockClass, widgetApi) => {
 const blockDefinition: BlockDefinition = {
   name: 'kroger-division-video-v12',
   factory,
-  attributes: ['pluginid', 'division', 'videotitle', 'videourl', 'videoduration', 'videoexpiry', 'videothumb'],
+  attributes: ['division', 'videotitle', 'videourl', 'videoduration', 'videoexpiry', 'videothumb'],
   blockLevel: 'block',
   configurationSchema,
   uiSchema,
