@@ -1,17 +1,10 @@
 declare const process: { env: Record<string, string> };
 
-// On localhost requests go through the webpack proxy to avoid CORS.
-// In production the direct Azure URL is used (Staffbase origin is allowed by the QUMU service).
-const _isLocalhost = typeof window !== 'undefined' &&
-  (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
-
 let _staffbaseBase  = 'https://krogertest.staffbase.com';
 let _installationId = '6a3bd7361da609538cb79dac';
 let _pluginId = '6a3bd7361da609538cb79dac';
 
-const QUMU_BASE = _isLocalhost
-  ? '/api/kulus'
-  : 'https://staffbase-qumu-gfe9e3e8ced6g3cu.eastus2-01.azurewebsites.net/staffbase-qumu/kulus';
+const QUMU_BASE = 'https://staffbase-qumu-gfe9e3e8ced6g3cu.eastus2-01.azurewebsites.net/staffbase-qumu/kulus';
 
 const QUMU_TOKEN_BASE = 'https://staffbase-qumu-gfe9e3e8ced6g3cu.eastus2-01.azurewebsites.net/staffbase-qumu/api/token';
 

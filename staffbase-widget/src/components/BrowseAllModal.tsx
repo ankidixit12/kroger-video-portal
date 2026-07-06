@@ -44,9 +44,9 @@ const BrowseAllModal: React.FC<BrowseAllModalProps> = ({ onClose }) => {
 
   useEffect(() => {
     fetchVideos()
-      .then(data => { setVideos(data); setLoading(false); })
+      .then(data => { setVideos(data.items); setLoading(false); })
       .catch(() => {
-        setError('Could not load videos — run npm run mock-api');
+        setError('Could not load videos. Please check API connectivity.');
         setLoading(false);
       });
   }, []);
