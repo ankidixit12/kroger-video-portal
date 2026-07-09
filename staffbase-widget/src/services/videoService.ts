@@ -6,7 +6,7 @@ let _pluginId = '6a3bd7361da609538cb79dac';
 
 const QUMU_BASE = 'https://staffbase-qumu-gfe9e3e8ced6g3cu.eastus2-01.azurewebsites.net/staffbase-qumu/kulus';
 
-const QUMU_TOKEN_BASE = 'https://staffbase-qumu-gfe9e3e8ced6g3cu.eastus2-01.azurewebsites.net/staffbase-qumu/api/token';
+const QUMU_TOKEN_BASE = '/api/installations';
 
 export function setStaffbaseBaseUrl(url: string): void {
   if (url) _staffbaseBase = url.replace(/\/$/, '');
@@ -35,7 +35,7 @@ let _cachedToken: string | null = null;
 async function fetchQumuToken(): Promise<string> {
   if (!_pluginId) throw new Error('QUMU plugin ID is not configured');
   if (_cachedToken) return _cachedToken;
-  const res = await fetch(`${QUMU_TOKEN_BASE}/${_pluginId}`, {
+  const res = await fetch(`${QUMU_TOKEN_BASE}/${_pluginId}/service/token`, {
     headers: basicAuthHeaders(),
     credentials: 'include',
   });
@@ -44,6 +44,7 @@ async function fetchQumuToken(): Promise<string> {
   const jwt = json?.jwt;
   if (!jwt || typeof jwt !== 'string') throw new Error('fetchQumuToken: missing or invalid JWT in response');
   _cachedToken = jwt;
+  console.log("staffbase token",_cachedToken);
   return _cachedToken;
 }
 
