@@ -36,7 +36,6 @@ async function fetchQumuToken(): Promise<string> {
   if (!_pluginId) throw new Error('QUMU plugin ID is not configured');
   if (_cachedToken) return _cachedToken;
   const res = await fetch(`${QUMU_TOKEN_BASE}/${_pluginId}/service/token`, {
-    headers: basicAuthHeaders(),
     credentials: 'include',
   });
   if (!res.ok) throw new Error('fetchQumuToken HTTP ' + res.status);
