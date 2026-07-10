@@ -14,6 +14,7 @@ const configurationSchema = {
   $schema: 'http://json-schema.org/draft-07/schema',
   type: 'object' as const,
   properties: {},
+  additionalProperties: false as const,
 };
 
 const uiSchema = {};
@@ -59,7 +60,7 @@ const blockDefinition: BlockDefinition = {
   blockLevel: 'block',
   configurationSchema,
   uiSchema,
-  label: 'Kroger\nStock Quote',
+  label: 'Kroger Stock Quote',
   iconUrl: icon,
 };
 
@@ -69,10 +70,6 @@ const externalBlockDefinition: ExternalBlockDefinition = {
   version: '1.0.0',
 };
 
-window.defineBlock(externalBlockDefinition);
-
-if (typeof document !== 'undefined') {
-  const _labelStyle = document.createElement('style');
-  _labelStyle.textContent = '.ui-commons__widget-menu__label { white-space: pre-line !important; }';
-  document.head.appendChild(_labelStyle);
+if (typeof window.defineBlock === 'function') {
+  window.defineBlock(externalBlockDefinition);
 }

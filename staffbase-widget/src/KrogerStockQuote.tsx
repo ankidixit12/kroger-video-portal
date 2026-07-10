@@ -1,5 +1,7 @@
 import React, { useEffect, useState } from 'react';
 
+declare const process: { env: { API_BASE_URL: string } };
+
 interface StockData {
   name: string;
   symbol: string;
@@ -108,7 +110,7 @@ const KrogerStockQuote: React.FC = () => {
   const [error, setError] = useState(false);
 
   const fetchData = () => {
-    fetch('/api/stockquote')
+    fetch(`${process.env.API_BASE_URL}/api/stockquote`)
       .then((r) => r.json())
       .then((json: StockData) => { setData(json); setError(false); })
       .catch(() => setError(true));
