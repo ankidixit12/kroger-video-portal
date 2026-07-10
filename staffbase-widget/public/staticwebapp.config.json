@@ -1,18 +1,16 @@
 {
   "globalHeaders": {
-    "Access-Control-Allow-Origin": "https://kroger.staffbase.com",
+    "Access-Control-Allow-Origin": "https://krogertest.staffbase.com",
     "Access-Control-Allow-Methods": "GET, OPTIONS",
-    "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Requested-With",
-    "Vary": "Origin"
+    "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Requested-With"
   },
   "routes": [
     {
       "route": "/*",
       "headers": {
-        "Access-Control-Allow-Origin": "https://kroger.staffbase.com",
+        "Access-Control-Allow-Origin": "https://krogertest.staffbase.com",
         "Access-Control-Allow-Methods": "GET, OPTIONS",
-        "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Requested-With",
-        "Vary": "Origin"
+        "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Requested-With"
       }
     }
   ]
