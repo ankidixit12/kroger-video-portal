@@ -29,6 +29,17 @@
         "videoexpiry":   { "ui:widget": "hidden" },
         "videothumb":    { "ui:widget": "hidden" }
       }
+    },
+    {
+      "id": "kroger-stockquote",
+      "name": "Kroger Stock Quote",
+      "source": "kroger-stockquote.js",
+      "configurationSchema": {
+        "$schema": "http://json-schema.org/draft-07/schema",
+        "type": "object",
+        "properties": {}
+      },
+      "uiSchema": {}
     }
   ]
 }
