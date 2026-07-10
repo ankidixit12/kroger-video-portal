@@ -69,8 +69,10 @@ const externalBlockDefinition: ExternalBlockDefinition = {
   version: '1.0.0',
 };
 
-const _labelStyle = document.createElement('style');
-_labelStyle.textContent = '.ui-commons__widget-menu__label { white-space: pre-line !important; }';
-document.head.appendChild(_labelStyle);
-
 window.defineBlock(externalBlockDefinition);
+
+if (typeof document !== 'undefined') {
+  const _labelStyle = document.createElement('style');
+  _labelStyle.textContent = '.ui-commons__widget-menu__label { white-space: pre-line !important; }';
+  document.head.appendChild(_labelStyle);
+}
