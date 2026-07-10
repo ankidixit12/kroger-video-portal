@@ -126,35 +126,33 @@
   </div>
 
   <script>
-    // Simulated stock data (replace with real API if available)
-    function getStockData() {
-      const basePrice = 53.42;
-      const change = (Math.random() * 2 - 0.5).toFixed(2);
-      const changeNum = parseFloat(change);
-      const price = (basePrice + changeNum).toFixed(2);
-      const pct = ((changeNum / basePrice) * 100).toFixed(2);
-      const now = new Date();
-      const dateStr = now.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) +
-                      ',  ' + now.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }) + ' EDT';
+    function applyData(data) {
+      const change = data.changeFromPreviousClose;
+      const pct = data.percentChangeFromPreviousClose;
+      const sign = change >= 0 ? '+' : '';
 
-      return { price, change: changeNum, pct, date: dateStr };
-    }
-
-    function render() {
-      const data = getStockData();
-      document.getElementById('stock-price').textContent = '$' + data.price;
+      document.getElementById('stock-price').textContent = '$' + data.currentPrice.toFixed(2);
 
       const changeEl = document.getElementById('stock-change');
-      const sign = data.change >= 0 ? '+' : '';
-      changeEl.textContent = sign + '$' + Math.abs(data.change).toFixed(2) + ' today (' + sign + data.pct + '%)';
-      changeEl.className = 'stock-change ' + (data.change >= 0 ? 'positive' : 'negative');
+      changeEl.textContent = sign + '$' + Math.abs(change).toFixed(2) + ' today (' + sign + pct.toFixed(2) + '%)';
+      changeEl.className = 'stock-change ' + (change >= 0 ? 'positive' : 'negative');
 
-      document.getElementById('stock-date').textContent = data.date;
+      document.getElementById('stock-date').textContent = data.date + '  ' + data.time + ' ET';
     }
 
-    render();
-    // Refresh every 30 seconds
-    setInterval(render, 30000);
+    function fetchAndRender() {
+      fetch('/api/stockquote')
+        .then(function(r) { return r.json(); })
+        .then(applyData)
+        .catch(function() {
+          document.getElementById('stock-price').textContent = '--';
+          document.getElementById('stock-change').textContent = 'Unable to load';
+          document.getElementById('stock-date').textContent = '';
+        });
+    }
+
+    fetchAndRender();
+    setInterval(fetchAndRender, 30000);
   </script>
 </body>
 </html>

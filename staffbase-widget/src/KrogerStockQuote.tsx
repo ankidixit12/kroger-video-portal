@@ -1,37 +1,28 @@
 import React, { useEffect, useState } from 'react';
 
 interface StockData {
-  price: string;
-  change: number;
-  pct: string;
+  name: string;
+  symbol: string;
+  currentPrice: number;
+  changeFromPreviousClose: number;
+  percentChangeFromPreviousClose: number;
   date: string;
-}
-
-function getStockData(): StockData {
-  const basePrice = 53.42;
-  const change = parseFloat((Math.random() * 2 - 0.5).toFixed(2));
-  const price = (basePrice + change).toFixed(2);
-  const pct = ((change / basePrice) * 100).toFixed(2);
-  const now = new Date();
-  const dateStr =
-    now.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) +
-    ',  ' +
-    now.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }) +
-    ' EDT';
-  return { price, change, pct, date: dateStr };
+  time: string;
 }
 
 const styles: Record<string, React.CSSProperties> = {
   card: {
-    background: '#fff',
-    borderRadius: '16px',
-    boxShadow: '0 4px 20px rgba(0, 0, 0, 0.08)',
-    padding: '24px 32px',
     display: 'flex',
+    maxWidth: '384px',
+    padding: '14px 20px',
+    justifyContent: 'flex-end',
     alignItems: 'center',
-    gap: '24px',
-    maxWidth: '520px',
-    width: '100%',
+    gap: '6px',
+    alignSelf: 'stretch',
+    borderRadius: '16px',
+    border: '1px solid #E5E7EB',
+    background: 'rgba(129, 186, 255, 0.27)',
+    boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.10), 0 1px 2px -1px rgba(0, 0, 0, 0.10)',
     fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
   },
   logo: {
@@ -46,29 +37,42 @@ const styles: Record<string, React.CSSProperties> = {
     flex: 1,
   },
   ticker: {
-    fontSize: '1rem',
-    fontWeight: 700,
-    color: '#1a1a1a',
+    color: '#084999',
+    fontFamily: 'Inter',
+    fontSize: '14px',
+    fontStyle: 'normal',
+    fontWeight: 800,
+    lineHeight: '20px',
   },
   company: {
-    fontSize: '0.875rem',
-    color: '#666',
-    marginTop: '2px',
+    color: '#101828',
+    fontFamily: 'Inter',
+    fontSize: '12px',
+    fontStyle: 'normal',
+    fontWeight: 400,
+    lineHeight: '15px',
   },
   priceSection: {
     textAlign: 'right' as const,
     flexShrink: 0,
   },
   price: {
-    fontSize: '1.75rem',
+    color: '#101828',
+    textAlign: 'right' as const,
+    fontFamily: 'Inter',
+    fontSize: '16px',
+    fontStyle: 'normal',
     fontWeight: 700,
-    color: '#1a1a1a',
+    lineHeight: '24px',
   },
   changePositive: {
-    fontSize: '0.9rem',
+    color: '#019338',
+    textAlign: 'right' as const,
+    fontFamily: 'Inter',
+    fontSize: '12px',
+    fontStyle: 'normal',
     fontWeight: 600,
-    marginTop: '4px',
-    color: '#16a34a',
+    lineHeight: '20px',
   },
   changeNegative: {
     fontSize: '0.9rem',
@@ -77,9 +81,12 @@ const styles: Record<string, React.CSSProperties> = {
     color: '#dc2626',
   },
   date: {
-    fontSize: '0.75rem',
-    color: '#999',
-    marginTop: '4px',
+    color: '#101828',
+    fontFamily: 'Inter',
+    fontSize: '10px',
+    fontStyle: 'normal',
+    fontWeight: 400,
+    lineHeight: '15px',
   },
   title: {
     fontSize: '1.75rem',
@@ -90,20 +97,48 @@ const styles: Record<string, React.CSSProperties> = {
   wrapper: {
     padding: '16px',
   },
+  status: {
+    fontSize: '0.9rem',
+    color: '#666',
+  },
 };
 
 const KrogerStockQuote: React.FC = () => {
-  const [data, setData] = useState<StockData>(getStockData());
+  const [data, setData] = useState<StockData | null>(null);
+  const [error, setError] = useState(false);
+
+  const fetchData = () => {
+    fetch('/api/stockquote')
+      .then((r) => r.json())
+      .then((json: StockData) => { setData(json); setError(false); })
+      .catch(() => setError(true));
+  };
 
   useEffect(() => {
-    const interval = setInterval(() => {
-      setData(getStockData());
-    }, 30000);
+    fetchData();
+    const interval = setInterval(fetchData, 30000);
     return () => clearInterval(interval);
   }, []);
 
-  const sign = data.change >= 0 ? '+' : '';
-  const changeStyle = data.change >= 0 ? styles.changePositive : styles.changeNegative;
+  const renderPrice = () => {
+    if (error) return <div style={styles.status}>Unable to load</div>;
+    if (!data) return <div style={styles.status}>Loading...</div>;
+
+    const change = data.changeFromPreviousClose;
+    const pct = data.percentChangeFromPreviousClose;
+    const sign = change >= 0 ? '+' : '';
+    const changeStyle = change >= 0 ? styles.changePositive : styles.changeNegative;
+
+    return (
+      <>
+        <div style={styles.price}>${data.currentPrice.toFixed(2)}</div>
+        <div style={changeStyle}>
+          {sign}${Math.abs(change).toFixed(2)} today ({sign}{pct.toFixed(2)}%)
+        </div>
+        <div style={styles.date}>{data.date}  {data.time} ET</div>
+      </>
+    );
+  };
 
   return (
     <div style={styles.wrapper}>
@@ -117,11 +152,7 @@ const KrogerStockQuote: React.FC = () => {
           <div style={styles.company}>The Kroger Co.</div>
         </div>
         <div style={styles.priceSection}>
-          <div style={styles.price}>${data.price}</div>
-          <div style={changeStyle}>
-            {sign}${Math.abs(data.change).toFixed(2)} today ({sign}{data.pct}%)
-          </div>
-          <div style={styles.date}>{data.date}</div>
+          {renderPrice()}
         </div>
       </div>
     </div>
