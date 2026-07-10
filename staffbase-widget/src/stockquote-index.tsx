@@ -23,32 +23,36 @@ const factory: BlockFactory = (BaseBlockClass) => {
   return class KrogerStockQuoteBlock extends BaseBlockClass implements BaseBlock {
     private root: Root | null = null;
     private editorRoot: Root | null = null;
+    private blockContainer: HTMLElement | null = null;
+    private editorContainer: HTMLElement | null = null;
 
     public constructor() { super(); }
 
     public renderBlock(container: HTMLElement): void {
-      if (!this.root) this.root = createRoot(container);
+      if (this.blockContainer !== container) {
+        if (this.root) this.root.unmount();
+        this.root = createRoot(container);
+        this.blockContainer = container;
+      }
       this.root.render(<KrogerStockQuote />);
     }
 
     public renderBlockInEditor(container: HTMLElement): void {
-      if (!this.editorRoot) this.editorRoot = createRoot(container);
+      if (this.editorContainer !== container) {
+        if (this.editorRoot) this.editorRoot.unmount();
+        this.editorRoot = createRoot(container);
+        this.editorContainer = container;
+      }
       this.editorRoot.render(<KrogerStockQuote />);
     }
 
     public unmountBlock(_container: HTMLElement): void {
-      if (this.root) { this.root.unmount(); this.root = null; }
-      if (this.editorRoot) { this.editorRoot.unmount(); this.editorRoot = null; }
+      if (this.root) { this.root.unmount(); this.root = null; this.blockContainer = null; }
+      if (this.editorRoot) { this.editorRoot.unmount(); this.editorRoot = null; this.editorContainer = null; }
     }
 
     public static get observedAttributes(): string[] {
       return [];
-    }
-
-    public attributeChangedCallback(
-      ...args: [string, string | undefined, string | undefined]
-    ): void {
-      super.attributeChangedCallback.apply(this, args);
     }
   };
 };
