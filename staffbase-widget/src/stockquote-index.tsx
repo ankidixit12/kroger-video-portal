@@ -8,15 +8,7 @@ import {
 } from '@staffbase/widget-sdk';
 import KrogerStockQuote from './KrogerStockQuote';
 
-const icon = 'data:image/svg+xml;base64,' + btoa(`
-<svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <rect x="4" y="8" width="40" height="32" rx="4" stroke="#000" stroke-width="3" fill="none"/>
-  <polyline points="8,32 16,24 22,28 30,16 40,20" stroke="#16a34a" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
-  <circle cx="16" cy="24" r="2" fill="#16a34a"/>
-  <circle cx="22" cy="28" r="2" fill="#16a34a"/>
-  <circle cx="30" cy="16" r="2" fill="#16a34a"/>
-</svg>
-`);
+const icon = 'data:image/svg+xml;base64,Cjxzdmcgd2lkdGg9IjQ4IiBoZWlnaHQ9IjQ4IiB2aWV3Qm94PSIwIDAgNDggNDgiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CiAgPHJlY3QgeD0iNCIgeT0iOCIgd2lkdGg9IjQwIiBoZWlnaHQ9IjMyIiByeD0iNCIgc3Ryb2tlPSIjMDAwIiBzdHJva2Utd2lkdGg9IjMiIGZpbGw9Im5vbmUiLz4KICA8cG9seWxpbmUgcG9pbnRzPSI4LDMyIDE2LDI0IDIyLDI4IDMwLDE2IDQwLDIwIiBzdHJva2U9IiMxNmEzNGEiIHN0cm9rZS13aWR0aD0iMyIgZmlsbD0ibm9uZSIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIi8+CiAgPGNpcmNsZSBjeD0iMTYiIGN5PSIyNCIgcj0iMiIgZmlsbD0iIzE2YTM0YSIvPgogIDxjaXJjbGUgY3g9IjIyIiBjeT0iMjgiIHI9IjIiIGZpbGw9IiMxNmEzNGEiLz4KICA8Y2lyY2xlIGN4PSIzMCIgY3k9IjE2IiByPSIyIiBmaWxsPSIjMTZhMzRhIi8+Cjwvc3ZnPgo=';
 
 const configurationSchema = {
   $schema: 'http://json-schema.org/draft-07/schema',
