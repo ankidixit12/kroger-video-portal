@@ -139,7 +139,7 @@ const KrogerStockQuote: React.FC = () => {
   return (
     <div style={styles.card}>
       <div style={styles.logo}>
-        <img src={KROGER_LOGO} alt="Kroger" style={{ width: '80px', height: 'auto' }} />
+        <img src={KROGER_LOGO} alt="Kroger" style={{ width: '80px', height: '80px', objectFit: 'contain' }} />
       </div>
       <div style={styles.info}>
         <div style={styles.ticker}>NYSE: KR</div>
