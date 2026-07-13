@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Kroger Stock Quote Widget - Preview</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #f0f4f8;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 40px 20px;
+    }
+
+    h1 {
+      font-size: 1.75rem;
+      font-weight: 700;
+      color: #1a1a1a;
+      margin-bottom: 24px;
+    }
+
+    .stock-card {
+      background: #fff;
+      border-radius: 16px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+      padding: 24px 32px;
+      display: flex;
+      align-items: center;
+      gap: 24px;
+      max-width: 520px;
+      width: 100%;
+    }
+
+    .stock-logo {
+      flex-shrink: 0;
+      width: 80px;
+      height: 80px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .stock-logo svg {
+      width: 80px;
+      height: auto;
+    }
+
+    .stock-info {
+      flex: 1;
+    }
+
+    .stock-ticker {
+      font-size: 1rem;
+      font-weight: 700;
+      color: #1a1a1a;
+    }
+
+    .stock-company {
+      font-size: 0.875rem;
+      color: #666;
+      margin-top: 2px;
+    }
+
+    .stock-price-section {
+      text-align: right;
+      flex-shrink: 0;
+    }
+
+    .stock-price {
+      font-size: 1.75rem;
+      font-weight: 700;
+      color: #1a1a1a;
+    }
+
+    .stock-change {
+      font-size: 0.9rem;
+      font-weight: 600;
+      margin-top: 4px;
+    }
+
+    .stock-change.positive {
+      color: #16a34a;
+    }
+
+    .stock-change.negative {
+      color: #dc2626;
+    }
+
+    .stock-date {
+      font-size: 0.75rem;
+      color: #999;
+      margin-top: 4px;
+    }
+
+    .loading {
+      color: #666;
+      font-size: 0.9rem;
+    }
+
+    .error {
+      color: #dc2626;
+      font-size: 0.9rem;
+    }
+  </style>
+</head>
+<body>
+  <h1>Kroger Stock</h1>
+  <div class="stock-card" id="stock-card">
+    <div class="stock-logo">
+      <img src="/assets/images.png" alt="Kroger" style="width:80px;height:auto;" />
+    </div>
+    <div class="stock-info">
+      <div class="stock-ticker">NYSE: KR</div>
+      <div class="stock-company">The Kroger Co.</div>
+    </div>
+    <div class="stock-price-section">
+      <div class="stock-price" id="stock-price">--</div>
+      <div class="stock-change positive" id="stock-change">--</div>
+      <div class="stock-date" id="stock-date">--</div>
+    </div>
+  </div>
+
+  <script>
+    function applyData(data) {
+      const change = data.changeFromPreviousClose;
+      const pct = data.percentChangeFromPreviousClose;
+      const sign = change >= 0 ? '+' : '';
+
+      document.getElementById('stock-price').textContent = '$' + data.currentPrice.toFixed(2);
+
+      const changeEl = document.getElementById('stock-change');
+      changeEl.textContent = sign + '$' + Math.abs(change).toFixed(2) + ' today (' + sign + pct.toFixed(2) + '%)';
+      changeEl.className = 'stock-change ' + (change >= 0 ? 'positive' : 'negative');
+
+      document.getElementById('stock-date').textContent = data.date + '  ' + data.time + ' ET';
+    }
+
+    function fetchAndRender() {
+      fetch('/api/stockquote')
+        .then(function(r) { return r.json(); })
+        .then(applyData)
+        .catch(function() {
+          document.getElementById('stock-price').textContent = '--';
+          document.getElementById('stock-change').textContent = 'Unable to load';
+          document.getElementById('stock-date').textContent = '';
+        });
+    }
+
+    fetchAndRender();
+    setInterval(fetchAndRender, 30000);
+  </script>
+</body>
+</html>
