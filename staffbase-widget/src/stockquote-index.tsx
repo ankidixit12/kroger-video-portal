@@ -19,7 +19,10 @@ const configurationSchema = {
 
 const uiSchema = {};
 
-const factory: BlockFactory = (BaseBlockClass) => {
+const factory: BlockFactory = (BaseBlockClass, widgetApi) => {
+  let _branchUrl = '';
+  try { _branchUrl = widgetApi.getBranchInformation().webUrl; } catch { /* ignore */ }
+
   return class KrogerStockQuoteBlock extends BaseBlockClass implements BaseBlock {
     private root: Root | null = null;
     private editorRoot: Root | null = null;
