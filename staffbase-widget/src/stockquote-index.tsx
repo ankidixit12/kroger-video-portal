@@ -74,6 +74,4 @@ const externalBlockDefinition: ExternalBlockDefinition = {
   version: '1.0.0',
 };
 
-if (typeof window.defineBlock === 'function') {
-  window.defineBlock(externalBlockDefinition);
-}
+window.defineBlock(externalBlockDefinition);
