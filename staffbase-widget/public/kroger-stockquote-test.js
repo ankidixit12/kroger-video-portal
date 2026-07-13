@@ -8,6 +8,9 @@
           renderBlock(container) { container.innerHTML = '<div>KR Stock Quote</div>'; }
           renderBlockInEditor(container) { container.innerHTML = '<div>KR Stock Quote</div>'; }
           unmountBlock() {}
+          attributeChangedCallback(attrName, oldValue, newValue) {
+            if (super.attributeChangedCallback) super.attributeChangedCallback(attrName, oldValue, newValue);
+          }
           static get observedAttributes() { return []; }
         };
       },

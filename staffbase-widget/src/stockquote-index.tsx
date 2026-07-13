@@ -54,6 +54,10 @@ const factory: BlockFactory = (BaseBlockClass, widgetApi) => {
       if (this.editorRoot) { this.editorRoot.unmount(); this.editorRoot = null; this.editorContainer = null; }
     }
 
+    public attributeChangedCallback(attrName: string, oldValue: string | undefined, newValue: string | undefined): void {
+      if (super.attributeChangedCallback) super.attributeChangedCallback(attrName, oldValue, newValue);
+    }
+
     public static get observedAttributes(): string[] {
       return [];
     }
