@@ -5,21 +5,29 @@
       factory: function (Base, widgetApi) {
         return class extends Base {
           constructor() { super(); }
-          renderBlock(container) { container.innerHTML = '<div>KR Stock Quote</div>'; }
-          renderBlockInEditor(container) { container.innerHTML = '<div>KR Stock Quote</div>'; }
+          renderBlock(container) {
+            var ticker = this.getAttribute('ticker') || 'KR';
+            container.innerHTML = '<div>Stock: ' + ticker + '</div>';
+          }
+          renderBlockInEditor(container) {
+            var ticker = this.getAttribute('ticker') || 'KR';
+            container.innerHTML = '<div>Stock: ' + ticker + '</div>';
+          }
           unmountBlock() {}
           attributeChangedCallback(attrName, oldValue, newValue) {
             if (super.attributeChangedCallback) super.attributeChangedCallback(attrName, oldValue, newValue);
           }
-          static get observedAttributes() { return []; }
+          static get observedAttributes() { return ['ticker']; }
         };
       },
-      attributes: [],
+      attributes: ['ticker'],
       blockLevel: 'block',
       configurationSchema: {
         '$schema': 'http://json-schema.org/draft-07/schema',
         type: 'object',
-        properties: {}
+        properties: {
+          ticker: { type: 'string', title: 'Stock Ticker Symbol', default: 'KR' }
+        }
       },
       label: 'Kroger Stock Quote Test',
       iconUrl: ''
