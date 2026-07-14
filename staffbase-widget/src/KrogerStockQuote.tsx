@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
+import KROGER_LOGO from '../../public/assets/Kroger.png';
 
 declare const process: { env: { STOCKQUOTE_API_URL: string } };
-const KROGER_LOGO = '../../public/assets/Kroger.png';
 interface StockData {
   name: string;
   symbol: string;
