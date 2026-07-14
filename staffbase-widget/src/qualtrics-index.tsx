@@ -12,6 +12,7 @@ const icon = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDgiIGhlaWdodD0iNDgiIHZp
 
 const configurationSchema = {
   $schema: 'http://json-schema.org/draft-07/schema',
+  title: 'Qualtrics Embedded Feedback',
   type: 'object' as const,
   properties: {},
 };
