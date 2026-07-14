@@ -8,12 +8,21 @@ on:
     types: [opened, synchronize, reopened, closed]
     branches:
       - main
+  workflow_dispatch:
+    inputs:
+      environment_name:
+        description: 'Azure SWA environment name to close. Azure SWA derives the environment name from the branch name by lower-casing it and replacing non-alphanumeric characters with hyphens (e.g. "copilot/fix-foo" becomes "copilot-fix-foo"). Check the Azure portal Environments tab for the exact name.'
+        required: true
+        type: string
 
 jobs:
   build_and_deploy_job:
     if: github.event_name == 'push' || (github.event_name == 'pull_request' && github.event.action != 'closed')
     runs-on: ubuntu-latest
     name: Build and Deploy Job
+    concurrency:
+      group: ${{ github.event_name == 'pull_request' && format('azure-swa-pr-{0}', github.event.pull_request.number) || format('azure-swa-{0}', github.ref_name) }}
+      cancel-in-progress: true
     steps:
       - uses: actions/checkout@v4
         with:
@@ -48,3 +57,15 @@ jobs:
         with:
           azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN_HAPPY_ISLAND_0506C550F }}
           action: "close"
+
+  close_stale_environment_job:
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    name: Close Stale Staging Environment
+    steps:
+      - name: Close Stale Environment
+        uses: Azure/static-web-apps-deploy@v1
+        with:
+          azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN_HAPPY_ISLAND_0506C550F }}
+          action: "close"
+          deployment_environment: ${{ inputs.environment_name }}
