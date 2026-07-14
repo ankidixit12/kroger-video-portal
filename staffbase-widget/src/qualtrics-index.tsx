@@ -19,7 +19,9 @@ const configurationSchema = {
 
 const uiSchema = {};
 
-const factory: BlockFactory = (BaseBlockClass) => {
+const factory: BlockFactory = (BaseBlockClass, widgetApi) => {
+  try { widgetApi.getBranchInformation(); } catch { /* ignore */ }
+
   return class QualtricsEmbeddedFeedbackBlock extends BaseBlockClass implements BaseBlock {
     private root: Root | null = null;
     private editorRoot: Root | null = null;
