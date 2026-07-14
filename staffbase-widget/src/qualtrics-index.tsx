@@ -31,7 +31,10 @@ const factory: BlockFactory = (BaseBlockClass, widgetApi) => {
     private root: Root | null = null;
     private editorRoot: Root | null = null;
 
-    public constructor() { super(); }
+    public constructor() {
+      super();
+      this.classList.add('qualtricsembeddedfeedback');
+    }
 
     public renderBlock(container: HTMLElement): void {
       if (!this.root) this.root = createRoot(container);
