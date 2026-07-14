@@ -14,43 +14,38 @@ const configurationSchema = {
   $schema: 'http://json-schema.org/draft-07/schema',
   title: 'Qualtrics Embedded Feedback',
   type: 'object' as const,
-  properties: {},
+  properties: {
+    embedzone: { type: 'string' as const, title: 'Embed Zone' },
+  },
 };
 
-const uiSchema = {};
+const uiSchema = {
+  embedzone: { 'ui:widget': 'hidden' },
+};
 
 const factory: BlockFactory = (BaseBlockClass, widgetApi) => {
-  try { widgetApi.getBranchInformation(); } catch { /* ignore */ }
+  let _branchUrl = '';
+  try { _branchUrl = widgetApi.getBranchInformation().webUrl; } catch { /* ignore */ }
 
   return class QualtricsEmbeddedFeedbackBlock extends BaseBlockClass implements BaseBlock {
     private root: Root | null = null;
     private editorRoot: Root | null = null;
-    private blockContainer: HTMLElement | null = null;
-    private editorContainer: HTMLElement | null = null;
 
     public constructor() { super(); }
 
     public renderBlock(container: HTMLElement): void {
-      if (this.blockContainer !== container) {
-        if (this.root) this.root.unmount();
-        this.root = createRoot(container);
-        this.blockContainer = container;
-      }
+      if (!this.root) this.root = createRoot(container);
       this.root.render(<QualtricsEmbeddedFeedback />);
     }
 
     public renderBlockInEditor(container: HTMLElement): void {
-      if (this.editorContainer !== container) {
-        if (this.editorRoot) this.editorRoot.unmount();
-        this.editorRoot = createRoot(container);
-        this.editorContainer = container;
-      }
+      if (!this.editorRoot) this.editorRoot = createRoot(container);
       this.editorRoot.render(<QualtricsEmbeddedFeedback />);
     }
 
     public unmountBlock(_container: HTMLElement): void {
-      if (this.root) { this.root.unmount(); this.root = null; this.blockContainer = null; }
-      if (this.editorRoot) { this.editorRoot.unmount(); this.editorRoot = null; this.editorContainer = null; }
+      if (this.root) { this.root.unmount(); this.root = null; }
+      if (this.editorRoot) { this.editorRoot.unmount(); this.editorRoot = null; }
     }
 
     public attributeChangedCallback(attrName: string, oldValue: string | undefined, newValue: string | undefined): void {
@@ -58,7 +53,7 @@ const factory: BlockFactory = (BaseBlockClass, widgetApi) => {
     }
 
     public static get observedAttributes(): string[] {
-      return [];
+      return ['embedzone'];
     }
   };
 };
@@ -66,7 +61,7 @@ const factory: BlockFactory = (BaseBlockClass, widgetApi) => {
 const blockDefinition: BlockDefinition = {
   name: 'kroger-qualtrics-feedback',
   factory,
-  attributes: [],
+  attributes: ['embedzone'],
   blockLevel: 'block',
   configurationSchema,
   uiSchema,

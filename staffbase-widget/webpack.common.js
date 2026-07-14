@@ -70,6 +70,30 @@ module.exports = [
   },
 
 
+  // ── Qualtrics Embedded Feedback widget (kroger-qualtrics-feedback.js) ───
+  {
+    name: 'qualtrics-feedback-widget',
+    entry: { 'kroger-qualtrics-feedback': './src/qualtrics-index.tsx' },
+    output: {
+      filename: '[name].js',
+      path: path.resolve(__dirname, './dist'),
+      clean: false,
+    },
+    resolve: { extensions: ['.tsx', '.ts', '.js'] },
+    plugins: [
+      new webpack.DefinePlugin({}),
+    ],
+    module: {
+      rules: [
+        { test: /\.m?js$/, resolve: { fullySpecified: false } },
+        { test: /\.(tsx?|jsx?)$/, use: 'babel-loader', exclude: /node_modules/ },
+        { test: /\.svg$/, type: 'asset/inline' },
+        { test: /\.(png|jpe?g|gif|webp)$/, type: 'asset/inline' },
+      ],
+    },
+  },
+
+
   // ── Local demo page (widget-demo.js) ───────────────────────────────────
   // React IS bundled here because widget-demo.html is a standalone page
   // with no host app supplying React.
