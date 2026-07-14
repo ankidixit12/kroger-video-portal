@@ -53,7 +53,9 @@ module.exports = [
     resolve: { extensions: ['.tsx', '.ts', '.js'] },
     plugins: [
       new webpack.DefinePlugin({
-        'process.env.API_BASE_URL': JSON.stringify(process.env.API_BASE_URL || 'http://localhost:3000'),
+        'process.env.STOCKQUOTE_API_URL': JSON.stringify(
+          process.env.STOCKQUOTE_API_URL || 'http://localhost:3000/api/stockquote'
+        ),
       }),
     ],
     module: {
