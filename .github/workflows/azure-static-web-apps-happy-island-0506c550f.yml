@@ -11,7 +11,7 @@ on:
   workflow_dispatch:
     inputs:
       environment_name:
-        description: 'Branch name of the stale staging environment to close (e.g. copilot/fix-github-actions-build-and-deploy-job)'
+        description: 'Azure SWA environment name to close. Azure SWA derives the environment name from the branch name by lower-casing it and replacing non-alphanumeric characters with hyphens (e.g. "copilot/fix-foo" becomes "copilot-fix-foo"). Check the Azure portal Environments tab for the exact name.'
         required: true
         type: string
 
@@ -20,6 +20,9 @@ jobs:
     if: github.event_name == 'push' || (github.event_name == 'pull_request' && github.event.action != 'closed')
     runs-on: ubuntu-latest
     name: Build and Deploy Job
+    concurrency:
+      group: ${{ github.event_name == 'pull_request' && format('azure-swa-pr-{0}', github.event.pull_request.number) || format('azure-swa-{0}', github.ref_name) }}
+      cancel-in-progress: true
     steps:
       - uses: actions/checkout@v4
         with:
