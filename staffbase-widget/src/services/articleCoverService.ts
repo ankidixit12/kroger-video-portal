@@ -310,6 +310,8 @@ function hookTopFetch(thumbUrl: string, qumuThumbUrl?: string): void {
                 method: 'PUT',
                 headers: {
                   'Content-Type': 'application/json',
+                  'Accept': 'application/json',
+                  'Authorization': 'Basic NmEwMzhmMWExMGIwZGQ3Mzc5NDI0Nzk2OnZHSkR3NSYhS2hoXm4uS3pwJkZxfjR+WXFyTkg5TiktTmxiOylJaFRuelNfZC0wM2FUMHlbMDBWcVRdN0gpdX4=',
                   'Origin': origin,
                 },
                 credentials: 'include',
