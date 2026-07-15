@@ -5,6 +5,7 @@ declare const process: { env: { STOCKQUOTE_API_URL: string } };
 interface StockData {
   name: string;
   symbol: string;
+  exchange?: string;
   currentPrice: number;
   changeFromPreviousClose: number;
   percentChangeFromPreviousClose: number;
@@ -127,7 +128,7 @@ const KrogerStockQuote: React.FC = () => {
       <>
         <div style={styles.price}>${data.currentPrice.toFixed(2)}</div>
         <div style={changeStyle}>
-          {sign}${Math.abs(change).toFixed(2)} today ({sign}{pct.toFixed(2)}%)
+          {sign}${Math.abs(change).toFixed(2)} today ({pct.toFixed(2)}%)
         </div>
         <div style={styles.date}>{data.date}&nbsp;&nbsp;{data.time} ET</div>
       </>
@@ -140,8 +141,8 @@ const KrogerStockQuote: React.FC = () => {
         <img src={KROGER_LOGO} alt="Kroger" style={{ width: '80px', height: '80px', objectFit: 'contain' }} />
       </div>
       <div style={styles.info}>
-        <div style={styles.ticker}>NYSE: KR</div>
-        <div style={styles.company}>The Kroger Co.</div>
+        <div style={styles.ticker}>{data ? `${data.exchange ?? 'NYSE'}: ${data.symbol}` : 'NYSE: KR'}</div>
+        <div style={styles.company}>{data?.name ?? 'The Kroger Co.'}</div>
       </div>
       <div style={styles.priceSection}>
         {renderPrice()}
