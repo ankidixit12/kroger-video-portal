@@ -307,7 +307,7 @@ function hookTopFetch(thumbUrl: string, qumuThumbUrl?: string): void {
                 notificationChannels: ['email', 'push'],
               };
               const putRes = await originalFetch(putUrl, {
-                method: 'PUT',
+                method: 'POST',
                 headers: {
                   'Content-Type': 'application/json',
                   'Origin': origin,
