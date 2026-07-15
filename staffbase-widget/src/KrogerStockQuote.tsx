@@ -120,7 +120,7 @@ const KrogerStockQuote: React.FC = () => {
 
     const change = data.changeFromPreviousClose;
     const pct = data.percentChangeFromPreviousClose;
-    const sign = change >= 0 ? '+' : '';
+    const sign = change >= 0 ? '+' : '-';
     const changeStyle = change >= 0 ? styles.changePositive : styles.changeNegative;
 
     return (
