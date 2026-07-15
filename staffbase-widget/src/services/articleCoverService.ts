@@ -298,7 +298,7 @@ function hookTopFetch(thumbUrl: string, qumuThumbUrl?: string): void {
         if (id) {
           capturedDraftArticleId = id;
           console.info('[KrogerVideoWidget] Draft article ID captured from XHR GET:', id);
-          const putUrl   = `https://krogertest.staffbase.com/api/post/${id}`;
+          const putUrl   = `https://krogertest.staffbase.com/api/posts/${id}`;
           const imageUrl = qumuThumbUrl || thumbUrl;
           (async () => {
             try {
@@ -307,7 +307,7 @@ function hookTopFetch(thumbUrl: string, qumuThumbUrl?: string): void {
                 notificationChannels: ['email', 'push'],
               };
               const putRes = await originalFetch(putUrl, {
-                method: 'POST',
+                method: 'PUT',
                 headers: {
                   'Content-Type': 'application/json',
                   'Origin': origin,
