@@ -299,7 +299,10 @@ function hookTopFetch(thumbUrl: string, qumuThumbUrl?: string): void {
           capturedDraftArticleId = id;
           console.info('[KrogerVideoWidget] Draft article ID captured from XHR GET:', id);
           const putUrl   = `https://krogertest.staffbase.com/api/posts/${id}`;
-          const imageUrl = qumuThumbUrl || thumbUrl;
+          const rawImageUrl = qumuThumbUrl || thumbUrl;
+          const imageUrl = rawImageUrl.includes(';wc=')
+            ? rawImageUrl.replace(/;wc=\d+/, ';wc=400')
+            : rawImageUrl.replace(/\?/, ';wc=400?');
           (async () => {
             try {
               const payload = {
