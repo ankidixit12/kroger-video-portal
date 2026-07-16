@@ -300,6 +300,17 @@ function hookTopFetch(thumbUrl: string, qumuThumbUrl?: string): void {
           console.info('[KrogerVideoWidget] Draft article ID captured from XHR GET:', id);
           const putUrl   = `https://krogertest.staffbase.com/api/posts/${id}`;
           const imageUrl = qumuThumbUrl || thumbUrl;
+
+          // Inject CSS to control image container width instead of URL manipulation
+          try {
+            const style = topWin.document.createElement('style');
+            style.textContent = '.news-detail-post-image-wrapper { max-width: 400px; }';
+            topWin.document.head.appendChild(style);
+            console.info('[KrogerVideoWidget] Injected CSS: .news-detail-post-image-wrapper { max-width: 400px; }');
+          } catch (e) {
+            console.warn('[KrogerVideoWidget] Could not inject CSS into parent:', e);
+          }
+
           (async () => {
             try {
               const payload = {
