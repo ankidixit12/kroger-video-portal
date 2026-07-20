@@ -145,7 +145,7 @@ try {
   if (!topDoc.getElementById('kroger-article-img-style')) {
     const s = topDoc.createElement('style');
     s.id = 'kroger-article-img-style';
-    s.textContent = '.news-detail-post-image-wrapper { max-width: 400px; padding-bottom: calc(24.25% + 39px); } .news-feed-post-image { max-width: 400px; }';
+    s.textContent = '.news-detail-post-image-wrapper { max-width: 400px; padding-bottom: calc(24.25% + 39px); } .news-feed-post-image { max-width: 400px; padding-bottom: calc(24.25% + 39px); }';
     topDoc.head.appendChild(s);
   }
 } catch { /* cross-origin — silently skip */ }
