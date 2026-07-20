@@ -304,9 +304,9 @@ function hookTopFetch(thumbUrl: string, qumuThumbUrl?: string): void {
           // Inject CSS to control image container width instead of URL manipulation
           try {
             const style = topWin.document.createElement('style');
-            style.textContent = '.news-feed-post-image { max-width: 400px; }';
+            style.textContent = '.news-feed-post-image { max-width: 400px; } .news-detail-post-image-wrapper { max-width: 400px; }';
             topWin.document.head.appendChild(style);
-            console.info('[KrogerVideoWidget] Injected CSS: .news-feed-post-image { max-width: 400px; }');
+            console.info('[KrogerVideoWidget] Injected CSS: .news-feed-post-image and .news-detail-post-image-wrapper { max-width: 400px; }');
           } catch (e) {
             console.warn('[KrogerVideoWidget] Could not inject CSS into parent:', e);
           }

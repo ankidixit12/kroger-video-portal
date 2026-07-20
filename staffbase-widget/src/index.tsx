@@ -138,4 +138,16 @@ const _labelStyle = document.createElement('style');
 _labelStyle.textContent = '.ui-commons__widget-menu__label { white-space: pre-line !important; }';
 document.head.appendChild(_labelStyle);
 
+// Inject article image CSS into the parent (host) page so it applies on both
+// Studio editor and the content/detail page when the widget script loads.
+try {
+  const topDoc = (window.top as Window).document;
+  if (!topDoc.getElementById('kroger-article-img-style')) {
+    const s = topDoc.createElement('style');
+    s.id = 'kroger-article-img-style';
+    s.textContent = '.news-detail-post-image-wrapper { max-width: 400px; } .news-feed-post-image { max-width: 400px; }';
+    topDoc.head.appendChild(s);
+  }
+} catch { /* cross-origin — silently skip */ }
+
 window.defineBlock(externalBlockDefinition);
