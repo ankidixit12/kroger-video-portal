@@ -10,7 +10,7 @@ import {
 } from './services/videoService';
 import searchIcon from '../../public/assets/searchicon.svg';
 
-const PAGE_SIZE = 10;
+const PAGE_SIZE = 32;
 const CARD_HEIGHT = '290px';
 
 function getExpiryDate(v: VideoItem): string {
