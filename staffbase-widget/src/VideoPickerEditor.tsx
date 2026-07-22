@@ -39,9 +39,8 @@ function isExpiringSoon(d: string): boolean {
   const t = new Date(d).getTime();
   if (Number.isNaN(t)) return false;
   const now = Date.now();
-  const sixMonthsFromNow = new Date();
-  sixMonthsFromNow.setMonth(sixMonthsFromNow.getMonth() + 5);
-  return t >= now && t <= sixMonthsFromNow.getTime();
+  const oneMonthFromNow = now + 30 * 24 * 60 * 60 * 1000;
+  return t >= now && t <= oneMonthFromNow;
 }
 
 function thumbUrl(v: VideoItem): string {
