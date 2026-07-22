@@ -35,7 +35,9 @@ function isExpiringSoon(iso?: string): boolean {
   if (!iso) return false;
   const t = new Date(iso).getTime();
   if (Number.isNaN(t)) return false;
-  return t >= Date.now();
+  const now = Date.now();
+  const oneMonthFromNow = now + 30 * 24 * 60 * 60 * 1000;
+  return t >= now && t <= oneMonthFromNow;
 }
 
 function highlight(text: string, q: string): string {
