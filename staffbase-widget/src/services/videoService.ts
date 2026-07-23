@@ -62,20 +62,6 @@ async function apiFetch(url: string): Promise<Response> {
   return res;
 }
 
-async function apiPostFetch(url: string, body: unknown): Promise<Response> {
-  const makeReq = async () => {
-    const headers = await apiHeaders({ 'Content-Type': 'application/json' });
-    return fetch(url, { method: 'POST', headers, body: JSON.stringify(body), credentials: 'include' });
-  };
-  let res = await makeReq();
-  if (res.status === 401) {
-    _cachedToken = null;
-    res = await makeReq();
-  }
-  return res;
-}
-
-
 // ─── Interfaces ───────────────────────────────────────────────────────────────
 
 export interface MetadataOption {
@@ -214,35 +200,21 @@ export async function fetchVideos(params?: {
 export async function fetchVideosByFilter(params: {
   offset?:   number;
   limit?:    number;
-  rules?:    PlaylistRule[];
-  search?:   string;
+  rules:     PlaylistRule[];
 }): Promise<FetchResult> {
   const query = new URLSearchParams();
   query.set('offset', String(params.offset ?? 0));
   query.set('limit',  String(params.limit  ?? 10));
 
-  const playlistRules: object[] = [];
-
-  for (const r of (params.rules || [])) {
-    playlistRules.push({ comparator: 'CONTAINS', field: { guid: r.fieldGuid }, value: r.optionGuid });
-  }
-
-  if (params.search) {
-    playlistRules.push({ comparator: 'contains', field: { name: 'title' }, value: params.search });
-    playlistRules.push({ comparator: 'contains', field: { name: 'publisher.name' }, value: params.search });
-  }
-
-  const body = { playlist: { matchAll: false, rules: playlistRules } };
+  // QUMU GET search format: "<fieldGuid>,CONTAINS,<optionGuid>"
+  // Multiple rules are joined with semicolons
+  const searchParts = params.rules.map(r => `${r.fieldGuid},CONTAINS,${r.optionGuid}`);
+  if (searchParts.length > 0) query.set('search', searchParts.join(';'));
 
   const url = `${QUMU_BASE}?${query}`;
-  console.log('[fetchVideosByFilter] POST body:', JSON.stringify(body));
-  const res = await apiPostFetch(url, body);
+  const res = await apiFetch(url);
   if (res.status === 404) return { items: [], total: 0 };
-  if (!res.ok) {
-    const errText = await res.text().catch(() => '');
-    console.error('[fetchVideosByFilter] HTTP', res.status, errText);
-    throw new Error('fetchVideosByFilter HTTP ' + res.status);
-  }
+  if (!res.ok) throw new Error('fetchVideosByFilter HTTP ' + res.status);
   const raw = await res.text();
   let data: any;
   try { data = JSON.parse(raw); } catch { throw new Error('fetchVideosByFilter: invalid JSON response'); }
