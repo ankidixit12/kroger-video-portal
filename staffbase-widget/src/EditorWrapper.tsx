@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import VideoPickerEditor from './VideoPickerEditor';
 
@@ -72,6 +72,22 @@ export default function EditorWrapper({ division: _division, videotitle, videour
   const [cardWidth, setCardWidth] = useState<number | null>(null);
   const wrapRef  = useRef<HTMLDivElement>(null);
   const dragRef  = useRef<{ startX: number; startW: number } | null>(null);
+
+  // Native keyboard events still bubble to document even after React's stopPropagation().
+  // In the Home Page article context (no iframe boundary), Staffbase's article editor
+  // intercepts them there, preventing the search input from accepting typed characters.
+  // Adding a bubble-phase listener on the portal container stops events before document.
+  useEffect(() => {
+    if (!open) return;
+    const portalEl = (() => { try { return (window.top as Window).document.body; } catch { return document.body; } })();
+    const stopNative = (e: Event) => e.stopPropagation();
+    portalEl.addEventListener('keydown', stopNative);
+    portalEl.addEventListener('keyup',   stopNative);
+    return () => {
+      portalEl.removeEventListener('keydown', stopNative);
+      portalEl.removeEventListener('keyup',   stopNative);
+    };
+  }, [open]);
 
   const onResizeStart = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
