@@ -158,7 +158,7 @@ export default function EditorWrapper({ division: _division, videotitle, videour
                     <span style={{ color: '#d97706', fontSize: 11, fontWeight: 600 }}>{fmtDate(videoexpiry)}</span>
                   </span>
                 ) : (
-                  <p style={{ ...S.expiryText, color: '#E17100', fontSize: 12, fontWeight: 600}}>
+                  <p style={{ ...S.expiryText, color: '#6b7280', fontSize: 12, fontWeight: 600}}>
                     Expires: {fmtDate(videoexpiry)}
                   </p>
                 )
