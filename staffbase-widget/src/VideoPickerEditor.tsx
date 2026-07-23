@@ -164,14 +164,14 @@ export default function VideoPickerEditor({ onSelect, onCancel }: Props) {
       if (optGuid) rules.push({ fieldGuid: divMeta.guid, fieldTitle: 'Division', optionGuid: optGuid, optionValue: optValue });
     }
 
-    const promise: Promise<FetchResult> = rules.length > 0
-      ? fetchVideosByFilter({ offset, limit: PAGE_SIZE, rules }).catch(err => {
-          // Filter POST requires a session cookie not available on localhost.
-          // Fall back to unfiltered list so local dev stays usable.
-          console.warn('[KrogerWidget] Division filter unavailable (likely no session cookie on localhost):', String(err));
-          return fetchVideos({ offset, limit: PAGE_SIZE });
+    const hasFilter = rules.length > 0 || !!search;
+
+    const promise: Promise<FetchResult> = hasFilter
+      ? fetchVideosByFilter({ offset, limit: PAGE_SIZE, rules, search: search || undefined }).catch(err => {
+          console.warn('[KrogerWidget] POST filter failed, falling back to GET search:', String(err));
+          return fetchVideos({ offset, limit: PAGE_SIZE, search: search || undefined });
         })
-      : fetchVideos({ offset, limit: PAGE_SIZE, search: search || undefined });
+      : fetchVideos({ offset, limit: PAGE_SIZE });
 
     promise
       .then(result => {
