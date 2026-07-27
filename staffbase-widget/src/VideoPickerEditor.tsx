@@ -135,11 +135,36 @@ export default function VideoPickerEditor({ onSelect, onCancel }: Props) {
   const [hoveredId,  setHoveredId]  = useState<string | number | null>(null);
   const [retryCount, setRetryCount] = useState(0);
 
-  const searchDebounce = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const loadId = useRef(0);
+  const searchDebounce  = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const loadId          = useRef(0);
+  const searchIframeRef = useRef<HTMLIFrameElement>(null);
+  // Always-current reference so the postMessage listener (added once) calls the latest handler
+  const handleSearchRef = useRef<(val: string) => void>(() => {});
 
-  // Keep ref in sync so the load effect can read latest meta without it being a dep
+  // Keep refs in sync so listeners added once always call the latest versions
   useEffect(() => { metaRef.current = metaTypes; }, [metaTypes]);
+
+  // The search input is rendered inside a sandboxed <iframe> so that Staffbase's
+  // capture-phase keyboard listeners (registered on window/document of the host page)
+  // never see keystrokes — events inside an iframe don't cross the frame boundary.
+  // The iframe posts value-change messages; we relay them via handleSearch.
+  useEffect(() => {
+    const topWin = (() => { try { return window.top as Window; } catch { return window; } })();
+    function onMsg(e: MessageEvent) {
+      if (e.data && e.data.type === 'kroger-video-search') {
+        handleSearchRef.current(String(e.data.value ?? ''));
+      }
+    }
+    topWin.addEventListener('message', onMsg);
+    return () => topWin.removeEventListener('message', onMsg);
+  }, []);
+
+  // When the division filter clears the search text, push the empty value into the iframe
+  useEffect(() => {
+    const iframe = searchIframeRef.current;
+    if (!iframe || !iframe.contentWindow) return;
+    iframe.contentWindow.postMessage({ type: 'kroger-video-set-search', value: inputValue }, '*');
+  }, [inputValue]);
 
   // Fetch master data (Division) once on mount
   useEffect(() => {
@@ -204,6 +229,7 @@ export default function VideoPickerEditor({ onSelect, onCancel }: Props) {
       if (val) { setDivOptGuid(''); } // search clears filter
     }, 300);
   }
+  handleSearchRef.current = handleSearch;
 
   function handleDivisionChange(optGuid: string) {
     setDivOptGuid(optGuid);
@@ -255,22 +281,18 @@ export default function VideoPickerEditor({ onSelect, onCancel }: Props) {
             ))}
         </select>
 
-        {/* Search */}
+        {/* Search — rendered in a sandboxed iframe so Staffbase's capture-phase
+            keyboard handlers on the host page cannot intercept typed characters */}
         <div style={S.searchWrap}>
           <span style={S.searchIcon} aria-hidden="true">
             <img src={searchIcon} alt="" width={16} height={16} />
           </span>
-          <input
-            type="text"
-            placeholder="Search by title…"
-            value={inputValue}
-            style={S.searchInput}
-            onChange={e => { stop(e); handleSearch(e.target.value); }}
-            onClick={stop}
-            onMouseDown={stop}
-            onFocus={stop}
-            onKeyDown={stop}
-            onKeyUp={stop}
+          <iframe
+            ref={searchIframeRef}
+            title="search"
+            scrolling="no"
+            style={{ width: '100%', height: '34px', border: 'none', display: 'block', borderRadius: 10, verticalAlign: 'top' }}
+            srcDoc={`<!DOCTYPE html><html><head><style>*{box-sizing:border-box;margin:0;padding:0}body{overflow:hidden;background:transparent}input{width:100%;height:34px;padding:7px 14px 7px 36px;border:2px solid #074085;border-radius:10px;font-size:13px;background:#fff;color:#111827;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;outline:none}input::placeholder{color:#9ca3af}</style></head><body><input type="text" placeholder="Search by title…"/><script>var i=document.querySelector('input');i.addEventListener('input',function(){parent.postMessage({type:'kroger-video-search',value:i.value},'*')});window.addEventListener('message',function(e){if(e.data&&e.data.type==='kroger-video-set-search')i.value=e.data.value});</script></body></html>`}
           />
         </div>
       </div>
