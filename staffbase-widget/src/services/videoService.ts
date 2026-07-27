@@ -2,7 +2,7 @@ declare const process: { env: Record<string, string> };
 
 let _staffbaseBase  = 'https://krogertest.staffbase.com';
 let _installationId = '6a3bd7361da609538cb79dac';
-let _pluginId = '6a3bd7361da609538cb79dac';
+let _pluginId = '6a62f458a1562171e13f19d1';
 
 const QUMU_BASE = 'https://staffbase-qumu-gfe9e3e8ced6g3cu.eastus2-01.azurewebsites.net/staffbase-qumu/kulus';
 
