@@ -17,7 +17,7 @@ export function setInstallationId(id: string): void {
 }
 
 export function setPluginId(id: string): void {
-  if (id && id !== _pluginId) { _pluginId = id; _cachedToken = null; }
+  if (id && id !== _pluginId) { _pluginId = id; }
 }
 
 export const AUTH_HEADER: Record<string, string> = {};
@@ -30,11 +30,8 @@ function basicAuthHeaders(extra?: Record<string, string>): Record<string, string
 
 // ─── Token ────────────────────────────────────────────────────────────────────
 
-let _cachedToken: string | null = null;
-
 async function fetchQumuToken(): Promise<string> {
   if (!_pluginId) throw new Error('QUMU plugin ID is not configured');
-  if (_cachedToken) return _cachedToken;
   const res = await fetch(`${QUMU_TOKEN_BASE}/${_pluginId}/service/token`, {
     credentials: 'include',
   });
@@ -42,9 +39,7 @@ async function fetchQumuToken(): Promise<string> {
   const json = await res.json();
   const jwt = json?.jwt;
   if (!jwt || typeof jwt !== 'string') throw new Error('fetchQumuToken: missing or invalid JWT in response');
-  _cachedToken = jwt;
-  console.log("staffbase token",_cachedToken);
-  return _cachedToken;
+  return jwt;
 }
 
 async function apiHeaders(extra?: Record<string, string>): Promise<Record<string, string>> {
@@ -52,11 +47,10 @@ async function apiHeaders(extra?: Record<string, string>): Promise<Record<string
   return { ...basicAuthHeaders(), Authorization_jwt: token, ...extra };
 }
 
-// Clears the cached token and retries once on 401 Unauthorized.
+// Retries once on 401 Unauthorized.
 async function apiFetch(url: string): Promise<Response> {
   let res = await fetch(url, { headers: await apiHeaders(), credentials: 'include' });
   if (res.status === 401) {
-    _cachedToken = null;
     res = await fetch(url, { headers: await apiHeaders(), credentials: 'include' });
   }
   return res;
