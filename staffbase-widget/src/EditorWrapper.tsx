@@ -72,20 +72,27 @@ export default function EditorWrapper({ division: _division, videotitle, videour
   const [cardWidth, setCardWidth] = useState<number | null>(null);
   const wrapRef  = useRef<HTMLDivElement>(null);
   const dragRef  = useRef<{ startX: number; startW: number } | null>(null);
+  const modalRef = useRef<HTMLDivElement>(null);
 
-  // Native keyboard events still bubble to document even after React's stopPropagation().
-  // In the Home Page article context (no iframe boundary), Staffbase's article editor
-  // intercepts them there, preventing the search input from accepting typed characters.
-  // Adding a bubble-phase listener on the portal container stops events before document.
+  // Staffbase's published-page app shell registers bubble-phase keyboard listeners on
+  // document.body at page load (before our widget). Attaching stopPropagation to body
+  // doesn't help because their listeners fire first (earlier registration wins on the
+  // same element). Instead we attach native bubble-phase listeners directly on the modal
+  // div, which is far closer to the input in the DOM. Bubble order is bottom-up, so our
+  // modal-level listener fires before any body/document/window listener, stopping
+  // Staffbase from ever seeing the event.
   useEffect(() => {
     if (!open) return;
-    const portalEl = (() => { try { return (window.top as Window).document.body; } catch { return document.body; } })();
+    const el = modalRef.current;
+    if (!el) return;
     const stopNative = (e: Event) => e.stopPropagation();
-    portalEl.addEventListener('keydown', stopNative);
-    portalEl.addEventListener('keyup',   stopNative);
+    el.addEventListener('keydown',  stopNative, false);
+    el.addEventListener('keyup',    stopNative, false);
+    el.addEventListener('keypress', stopNative, false);
     return () => {
-      portalEl.removeEventListener('keydown', stopNative);
-      portalEl.removeEventListener('keyup',   stopNative);
+      el.removeEventListener('keydown',  stopNative, false);
+      el.removeEventListener('keyup',    stopNative, false);
+      el.removeEventListener('keypress', stopNative, false);
     };
   }, [open]);
 
@@ -217,7 +224,7 @@ export default function EditorWrapper({ division: _division, videotitle, videour
 
       {open && createPortal(
         <div style={S.backdrop} onClick={e => { stop(e); setOpen(false); }} onMouseDown={stop} onKeyDown={stop}>
-          <div style={S.modal} onClick={stop} onMouseDown={stop} onKeyDown={stop}>
+          <div ref={modalRef} style={S.modal} onClick={stop} onMouseDown={stop} onKeyDown={stop}>
             <div style={S.modalHdr}>
               <span style={S.modalTtl}>Select a Video</span>
             </div>
