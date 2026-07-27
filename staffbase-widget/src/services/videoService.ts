@@ -47,7 +47,7 @@ async function apiHeaders(extra?: Record<string, string>): Promise<Record<string
   return { ...basicAuthHeaders(), Authorization_jwt: token, ...extra };
 }
 
-// Retries once on 401 Unauthorized.
+// Retries once on 401 Unauthorized with a newly fetched token.
 async function apiFetch(url: string): Promise<Response> {
   let res = await fetch(url, { headers: await apiHeaders(), credentials: 'include' });
   if (res.status === 401) {
