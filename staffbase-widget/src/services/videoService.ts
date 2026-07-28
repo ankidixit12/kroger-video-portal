@@ -217,11 +217,12 @@ export async function fetchVideosByFilter(params: {
 
   if (params.search) {
     bodyRules.push({ comparator: 'CONTAINS', field: { name: 'title' }, value: params.search });
-    bodyRules.push({ comparator: 'CONTAINS', field: { name: 'publisher.name' }, value: params.search });
   }
 
+  bodyRules.push({ comparator: 'IS', field: { name: 'state' }, value: 'PUBLISHED' });
+
   const url = `${QUMU_BASE}?${query}`;
-  const res = await apiPost(url, { playlist: { matchAll: false, rules: bodyRules } });
+  const res = await apiPost(url, { playlist: { matchAll: true, rules: bodyRules } });
   if (res.status === 404) return { items: [], total: 0 };
   if (!res.ok) throw new Error('fetchVideosByFilter HTTP ' + res.status);
   const raw = await res.text();
