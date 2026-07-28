@@ -216,8 +216,8 @@ export async function fetchVideosByFilter(params: {
   }
 
   if (params.search) {
-    bodyRules.push({ comparator: 'contains', field: { name: 'title' }, value: params.search });
-    bodyRules.push({ comparator: 'contains', field: { name: 'publisher.name' }, value: params.search });
+    bodyRules.push({ comparator: 'CONTAINS', field: { name: 'title' }, value: params.search });
+    bodyRules.push({ comparator: 'CONTAINS', field: { name: 'publisher.name' }, value: params.search });
   }
 
   const url = `${QUMU_BASE}?${query}`;
