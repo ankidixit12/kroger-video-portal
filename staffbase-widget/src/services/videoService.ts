@@ -60,7 +60,6 @@ async function apiPost(url: string, body: unknown): Promise<Response> {
   const headers = { ...(await apiHeaders()), 'Content-Type': 'application/json' };
   let res = await fetch(url, { method: 'POST', headers, body: JSON.stringify(body), credentials: 'include' });
   if (res.status === 401) {
-    _cachedToken = null;
     const retryHeaders = { ...(await apiHeaders()), 'Content-Type': 'application/json' };
     res = await fetch(url, { method: 'POST', headers: retryHeaders, body: JSON.stringify(body), credentials: 'include' });
   }
