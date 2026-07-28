@@ -189,14 +189,12 @@ export default function VideoPickerEditor({ onSelect, onCancel }: Props) {
       if (optGuid) rules.push({ fieldGuid: divMeta.guid, fieldTitle: 'Division', optionGuid: optGuid, optionValue: optValue });
     }
 
-    const promise: Promise<FetchResult> = rules.length > 0
-      ? fetchVideosByFilter({ offset, limit: PAGE_SIZE, rules }).catch(err => {
-          // Filter POST requires a session cookie not available on localhost.
-          // Fall back to unfiltered list so local dev stays usable.
-          console.warn('[KrogerWidget] Division filter unavailable (likely no session cookie on localhost):', String(err));
+    const promise: Promise<FetchResult> = (rules.length > 0 || !!search)
+      ? fetchVideosByFilter({ offset, limit: PAGE_SIZE, rules, search: search || undefined }).catch(err => {
+          console.warn('[KrogerWidget] Filter unavailable (likely no session cookie on localhost):', String(err));
           return fetchVideos({ offset, limit: PAGE_SIZE });
         })
-      : fetchVideos({ offset, limit: PAGE_SIZE, search: search || undefined });
+      : fetchVideos({ offset, limit: PAGE_SIZE });
 
     promise
       .then(result => {
@@ -226,7 +224,6 @@ export default function VideoPickerEditor({ onSelect, onCancel }: Props) {
       setSearch(val);
       setOffset(0);
       setSelVideo(null);
-      if (val) { setDivOptGuid(''); } // search clears filter
     }, 300);
   }
   handleSearchRef.current = handleSearch;
@@ -235,7 +232,6 @@ export default function VideoPickerEditor({ onSelect, onCancel }: Props) {
     setDivOptGuid(optGuid);
     setOffset(0);
     setSelVideo(null);
-    if (optGuid) { setSearch(''); setInputValue(''); } // filter clears search
   }
 
   function goToPage(page: number) {

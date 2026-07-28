@@ -62,6 +62,17 @@ async function apiFetch(url: string): Promise<Response> {
   return res;
 }
 
+async function apiPost(url: string, body: unknown): Promise<Response> {
+  const headers = { ...(await apiHeaders()), 'Content-Type': 'application/json' };
+  let res = await fetch(url, { method: 'POST', headers, body: JSON.stringify(body), credentials: 'include' });
+  if (res.status === 401) {
+    _cachedToken = null;
+    const retryHeaders = { ...(await apiHeaders()), 'Content-Type': 'application/json' };
+    res = await fetch(url, { method: 'POST', headers: retryHeaders, body: JSON.stringify(body), credentials: 'include' });
+  }
+  return res;
+}
+
 // ─── Interfaces ───────────────────────────────────────────────────────────────
 
 export interface MetadataOption {
@@ -181,12 +192,10 @@ function mapKuluToVideoItem(k: any): VideoItem {
 export async function fetchVideos(params?: {
   offset?: number;
   limit?:  number;
-  search?: string;
 }): Promise<FetchResult> {
   const query = new URLSearchParams();
   query.set('offset', String(params?.offset ?? 0));
   query.set('limit',  String(params?.limit  ?? 10));
-  if (params?.search) query.set('search', `title,CONTAINS,${params.search}`);
 
   const res = await apiFetch(`${QUMU_BASE}?${query}`);
   if (!res.ok) throw new Error('fetchVideos HTTP ' + res.status);
@@ -198,21 +207,28 @@ export async function fetchVideos(params?: {
 }
 
 export async function fetchVideosByFilter(params: {
-  offset?:   number;
-  limit?:    number;
-  rules:     PlaylistRule[];
+  offset?:  number;
+  limit?:   number;
+  rules?:   PlaylistRule[];
+  search?:  string;
 }): Promise<FetchResult> {
   const query = new URLSearchParams();
   query.set('offset', String(params.offset ?? 0));
   query.set('limit',  String(params.limit  ?? 10));
 
-  // QUMU GET search format: "<fieldGuid>,CONTAINS,<optionGuid>"
-  // Multiple rules are joined with semicolons
-  const searchParts = params.rules.map(r => `${r.fieldGuid},CONTAINS,${r.optionGuid}`);
-  if (searchParts.length > 0) query.set('search', searchParts.join(';'));
+  const bodyRules: Array<{ comparator: string; field: { guid?: string; name?: string }; value: string }> = [];
+
+  for (const r of (params.rules ?? [])) {
+    bodyRules.push({ comparator: 'CONTAINS', field: { guid: r.fieldGuid }, value: r.optionGuid });
+  }
+
+  if (params.search) {
+    bodyRules.push({ comparator: 'contains', field: { name: 'title' }, value: params.search });
+    bodyRules.push({ comparator: 'contains', field: { name: 'publisher.name' }, value: params.search });
+  }
 
   const url = `${QUMU_BASE}?${query}`;
-  const res = await apiFetch(url);
+  const res = await apiPost(url, { playlist: { matchAll: false, rules: bodyRules } });
   if (res.status === 404) return { items: [], total: 0 };
   if (!res.ok) throw new Error('fetchVideosByFilter HTTP ' + res.status);
   const raw = await res.text();
