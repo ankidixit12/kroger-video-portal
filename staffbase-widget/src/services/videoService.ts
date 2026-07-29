@@ -1,4 +1,3 @@
-declare const process: { env: Record<string, string> };
 
 let _staffbaseBase  = 'https://krogertest.staffbase.com';
 let _installationId = '6a3bd7361da609538cb79dac';
@@ -22,11 +21,6 @@ export function setPluginId(id: string): void {
 
 export const AUTH_HEADER: Record<string, string> = {};
 
-function basicAuthHeaders(extra?: Record<string, string>): Record<string, string> {
-  const u = process.env.QUMU_USERNAME || '';
-  const p = process.env.QUMU_PASSWORD || '';
-  return { Authorization: 'Basic ' + btoa(u + ':' + p), ...extra };
-}
 
 // ─── Token ────────────────────────────────────────────────────────────────────
 
@@ -44,7 +38,7 @@ async function fetchQumuToken(): Promise<string> {
 
 async function apiHeaders(extra?: Record<string, string>): Promise<Record<string, string>> {
   const token = await fetchQumuToken();
-  return { ...basicAuthHeaders(), Authorization_jwt: token, ...extra };
+  return { Authorization_jwt: token, ...extra };
 }
 
 // Retries once on 401 Unauthorized with a newly fetched token.
