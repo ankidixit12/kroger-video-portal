@@ -15,7 +15,7 @@
 const PING_CONFIG = {
   envId: '6c0241eb-6d4c-4b98-bdfb-5ab44b0d7112',
   clientId: 'de6b92bb-b02f-431b-82bf-1ae96f570f2e',
-  redirectUri: 'https://happy-island-0506c550f.7.azurestaticapps.net/callback.html',
+  redirectUri: 'https://krogertest.staffbase.com/auth/oidc/kroger-test-ping/callback',
   scope: 'openid',
   kongBaseUrl: 'REPLACE_WITH_KONG_GATEWAY_BASE_URL',
 };
