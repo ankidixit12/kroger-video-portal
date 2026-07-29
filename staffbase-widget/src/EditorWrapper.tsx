@@ -1,6 +1,13 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import VideoPickerEditor from './VideoPickerEditor';
+import { getAccessToken } from './services/pingone-auth';
+
+function ensurePingOneToken(): void {
+  getAccessToken().catch(err => {
+    console.warn('[KrogerWidget] PingOne authentication failed:', String(err));
+  });
+}
 
 interface Props {
   division:      string;
@@ -155,7 +162,7 @@ export default function EditorWrapper({ division: _division, videotitle, videour
                 </div>
               )}
               <div style={S.actionBtns}>
-                <button style={S.iconBtn} title="Change video" onClick={e => { stop(e); if (!open) setOpen(true); }}>
+                <button style={S.iconBtn} title="Change video" onClick={e => { stop(e); ensurePingOneToken(); if (!open) setOpen(true); }}>
                   <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
                     <polyline points="23 4 23 10 17 10"/>
                     <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
@@ -216,7 +223,7 @@ export default function EditorWrapper({ division: _division, videotitle, videour
             <p style={S.emptyTitle}>No video selected</p>
             <p style={S.emptyDesc}>Click the button to choose a training video.</p>
           </div>
-          <button style={S.selectBtn} onClick={e => { stop(e); if (!open) setOpen(true); }}>
+          <button style={S.selectBtn} onClick={e => { stop(e); ensurePingOneToken(); if (!open) setOpen(true); }}>
             Select Video
           </button>
         </div>
