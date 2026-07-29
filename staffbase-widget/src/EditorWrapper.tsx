@@ -1,6 +1,19 @@
-import React, { useState, useRef, useCallback, useEffect } from 'react';
+import React, { useState, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
+import {
+  EXPIRING_SOON_WINDOW_MONTHS,
+  THUMBNAIL_FALLBACK_BASE_URL,
+} from './constants';
 import VideoPickerEditor from './VideoPickerEditor';
+import { getAccessToken } from './services/pingone-auth';
+
+// Kick off PingOne auth on user gesture so a valid access token is stored in
+// sessionStorage before any Kong API request the picker may make.
+function ensurePingOneToken(): void {
+  getAccessToken().catch(err => {
+    console.warn('[KrogerWidget] PingOne authentication failed:', String(err));
+  });
+}
 
 interface Props {
   division:      string;
@@ -30,11 +43,11 @@ function isExpiringSoon(d: string): boolean {
   if (!d) return false;
   const t = new Date(d).getTime();
   if (Number.isNaN(t)) return false;
-  const now = Date.now();
-  const oneMonthFromNow = now + 30 * 24 * 60 * 60 * 1000;
-  return t >= now && t <= oneMonthFromNow;
+  const now = new Date();
+  const oneMonthFromNow = new Date(now.getTime());
+  oneMonthFromNow.setMonth(oneMonthFromNow.getMonth() + EXPIRING_SOON_WINDOW_MONTHS);
+  return t >= now.getTime() && t <= oneMonthFromNow.getTime();
 }
-
 const S: Record<string, React.CSSProperties> = {
   wrap:       { fontFamily: "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif", background: '#fff', borderRadius: 12, overflow: 'hidden', boxShadow: '0 1px 4px rgba(0,0,0,0.08)' },
 
@@ -72,29 +85,6 @@ export default function EditorWrapper({ division: _division, videotitle, videour
   const [cardWidth, setCardWidth] = useState<number | null>(null);
   const wrapRef  = useRef<HTMLDivElement>(null);
   const dragRef  = useRef<{ startX: number; startW: number } | null>(null);
-  const modalRef = useRef<HTMLDivElement>(null);
-
-  // Staffbase's published-page app shell registers bubble-phase keyboard listeners on
-  // document.body at page load (before our widget). Attaching stopPropagation to body
-  // doesn't help because their listeners fire first (earlier registration wins on the
-  // same element). Instead we attach native bubble-phase listeners directly on the modal
-  // div, which is far closer to the input in the DOM. Bubble order is bottom-up, so our
-  // modal-level listener fires before any body/document/window listener, stopping
-  // Staffbase from ever seeing the event.
-  useEffect(() => {
-    if (!open) return;
-    const el = modalRef.current;
-    if (!el) return;
-    const stopNative = (e: Event) => e.stopPropagation();
-    el.addEventListener('keydown',  stopNative, false);
-    el.addEventListener('keyup',    stopNative, false);
-    el.addEventListener('keypress', stopNative, false);
-    return () => {
-      el.removeEventListener('keydown',  stopNative, false);
-      el.removeEventListener('keyup',    stopNative, false);
-      el.removeEventListener('keypress', stopNative, false);
-    };
-  }, [open]);
 
   const onResizeStart = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
@@ -127,7 +117,7 @@ export default function EditorWrapper({ division: _division, videotitle, videour
     onSelect('', '', '', '', '', '');
   }
 
-  const thumb = videothumb || `https://picsum.photos/seed/kroger${encodeURIComponent(videotitle || 'default')}/640/360`;
+  const thumb = videothumb || `${THUMBNAIL_FALLBACK_BASE_URL}${encodeURIComponent(videotitle || 'default')}/640/360`;
   const expiring = isExpiringSoon(videoexpiry);
 
   return (
@@ -155,7 +145,7 @@ export default function EditorWrapper({ division: _division, videotitle, videour
                 </div>
               )}
               <div style={S.actionBtns}>
-                <button style={S.iconBtn} title="Change video" onClick={e => { stop(e); if (!open) setOpen(true); }}>
+                <button style={S.iconBtn} title="Change video" onClick={e => { stop(e); ensurePingOneToken(); if (!open) setOpen(true); }}>
                   <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
                     <polyline points="23 4 23 10 17 10"/>
                     <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
@@ -181,7 +171,7 @@ export default function EditorWrapper({ division: _division, videotitle, videour
                     <span style={{ color: '#d97706', fontSize: 11, fontWeight: 600 }}>{fmtDate(videoexpiry)}</span>
                   </span>
                 ) : (
-                  <p style={{ ...S.expiryText, color: '#6b7280', fontSize: 12, fontWeight: 600}}>
+                  <p style={{ ...S.expiryText, color: '#E17100', fontSize: 12, fontWeight: 600}}>
                     Expires: {fmtDate(videoexpiry)}
                   </p>
                 )
@@ -216,7 +206,7 @@ export default function EditorWrapper({ division: _division, videotitle, videour
             <p style={S.emptyTitle}>No video selected</p>
             <p style={S.emptyDesc}>Click the button to choose a training video.</p>
           </div>
-          <button style={S.selectBtn} onClick={e => { stop(e); if (!open) setOpen(true); }}>
+          <button style={S.selectBtn} onClick={e => { stop(e); ensurePingOneToken(); if (!open) setOpen(true); }}>
             Select Video
           </button>
         </div>
@@ -224,7 +214,7 @@ export default function EditorWrapper({ division: _division, videotitle, videour
 
       {open && createPortal(
         <div style={S.backdrop} onClick={e => { stop(e); setOpen(false); }} onMouseDown={stop} onKeyDown={stop}>
-          <div ref={modalRef} style={S.modal} onClick={stop} onMouseDown={stop} onKeyDown={stop}>
+          <div style={S.modal} onClick={stop} onMouseDown={stop} onKeyDown={stop}>
             <div style={S.modalHdr}>
               <span style={S.modalTtl}>Select a Video</span>
             </div>
