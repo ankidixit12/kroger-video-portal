@@ -16,7 +16,7 @@ const PING_CONFIG = {
   envId: '6c0241eb-6d4c-4b98-bdfb-5ab44b0d7112',
   clientId: 'de6b92bb-b02f-431b-82bf-1ae96f570f2e',
   redirectUri: 'https://krogertest.staffbase.com/auth/oidc/kroger-test-ping/callback',
-  scope: 'openid+profile+email',
+  scope: 'openid profile email',
   kongBaseUrl: 'REPLACE_WITH_KONG_GATEWAY_BASE_URL',
 };
 
