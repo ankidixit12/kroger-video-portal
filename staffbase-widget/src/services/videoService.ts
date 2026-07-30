@@ -215,7 +215,7 @@ export async function fetchVideosByFilter(params: {
 
   bodyRules.push({ comparator: 'IS', field: { name: 'state' }, value: 'PUBLISHED' });
 
-  const url = `${QUMU_BASE}?${query}`;
+  const url = `${QUMU_BASE}/search?${query}`;
   const res = await apiPost(url, { playlist: { matchAll: true, rules: bodyRules } });
   if (res.status === 404) return { items: [], total: 0 };
   if (!res.ok) throw new Error('fetchVideosByFilter HTTP ' + res.status);
