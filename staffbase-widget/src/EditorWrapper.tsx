@@ -3,12 +3,6 @@ import { createPortal } from 'react-dom';
 import VideoPickerEditor from './VideoPickerEditor';
 import { getAccessToken } from './services/pingone-auth';
 
-function ensurePingOneToken(): void {
-  getAccessToken().catch(err => {
-    console.warn('[KrogerWidget] PingOne authentication failed:', String(err));
-  });
-}
-
 interface Props {
   division:      string;
   videotitle:    string;
@@ -71,12 +65,22 @@ const S: Record<string, React.CSSProperties> = {
   modalHdr:   { display: 'flex', alignItems: 'center', padding: '14px 18px', borderBottom: '1px solid #e5e7eb', flexShrink: 0 },
   modalTtl:   { color: '#364153', fontFamily: 'Inter, sans-serif', fontSize: 18, fontStyle: 'normal', fontWeight: 600, lineHeight: '28px', letterSpacing: '-0.439px', flex: 1 },
   modalBody:  { flex: 1, minHeight: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column' as any },
+
+  /* Auth phase (loader / error) rendered inside the modal box */
+  centeredState: { flex: 1, display: 'flex', flexDirection: 'column' as any, alignItems: 'center', justifyContent: 'center', gap: 14, padding: 24, textAlign: 'center' as any },
+  spinner:    { width: 40, height: 40, borderRadius: '50%', border: '3px solid #e5e7eb', borderTopColor: '#074085', animation: 'krogerspin 0.8s linear infinite' },
+  authText:   { fontSize: 14, color: '#6b7280', margin: 0 },
+  errIcon:    { width: 72, height: 72, borderRadius: 9999, background: '#FEF2F2', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#ef4444' },
+  errTitle:   { fontSize: 18, fontWeight: 700, color: '#111827', margin: 0 },
+  errDesc:    { fontSize: 14, color: '#6b7280', margin: 0, lineHeight: 1.6 },
+  btnRetry:   { padding: '10px 32px', borderRadius: 24, border: 'none', background: '#074085', color: '#fff', fontSize: 14, fontWeight: 600, cursor: 'pointer', marginTop: 6 },
 };
 
 export default function EditorWrapper({ division: _division, videotitle, videourl, videoduration: _videoduration, videoexpiry, videothumb, onSelect }: Props) {
   const [open, setOpen]       = useState(false);
   const [hovered, setHovered] = useState(false);
   const [cardWidth, setCardWidth] = useState<number | null>(null);
+  const [authState, setAuthState] = useState<'idle' | 'loading' | 'ready' | 'error'>('idle');
   const wrapRef  = useRef<HTMLDivElement>(null);
   const dragRef  = useRef<{ startX: number; startW: number } | null>(null);
   const modalRef = useRef<HTMLDivElement>(null);
@@ -124,9 +128,35 @@ export default function EditorWrapper({ division: _division, videotitle, videour
     document.addEventListener('mouseup',   onUp,   { capture: true });
   }, []);
 
+  // Runs the PingOne flow behind the in-box loader. Silent steps (stored token,
+  // refresh, prompt=none) resolve invisibly; only a first-time interactive login
+  // briefly surfaces PingOne's own popup (its login page cannot be framed). The
+  // token is persisted to sessionStorage by getAccessToken().
+  const runAuth = useCallback(() => {
+    setAuthState('loading');
+    getAccessToken()
+      .then(() => setAuthState('ready'))
+      .catch(err => {
+        console.warn('[KrogerWidget] PingOne authentication failed:', String(err));
+        setAuthState('error');
+      });
+  }, []);
+
+  function openPicker(e: React.MouseEvent) {
+    stop(e);
+    if (open) return;
+    setOpen(true);
+    runAuth();
+  }
+
+  function closePicker() {
+    setOpen(false);
+    setAuthState('idle');
+  }
+
   function handleSelect(d: string, t: string, u: string, dur: string, exp: string, th: string) {
     onSelect(d, t, u, dur, exp, th);
-    setOpen(false);
+    closePicker();
   }
 
   function handleDelete(e: React.MouseEvent) {
@@ -162,7 +192,7 @@ export default function EditorWrapper({ division: _division, videotitle, videour
                 </div>
               )}
               <div style={S.actionBtns}>
-                <button style={S.iconBtn} title="Change video" onClick={e => { stop(e); ensurePingOneToken(); if (!open) setOpen(true); }}>
+                <button style={S.iconBtn} title="Change video" onClick={openPicker}>
                   <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
                     <polyline points="23 4 23 10 17 10"/>
                     <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
@@ -223,24 +253,49 @@ export default function EditorWrapper({ division: _division, videotitle, videour
             <p style={S.emptyTitle}>No video selected</p>
             <p style={S.emptyDesc}>Click the button to choose a training video.</p>
           </div>
-          <button style={S.selectBtn} onClick={e => { stop(e); ensurePingOneToken(); if (!open) setOpen(true); }}>
+          <button style={S.selectBtn} onClick={openPicker}>
             Select Video
           </button>
         </div>
       )}
 
       {open && createPortal(
-        <div style={S.backdrop} onClick={e => { stop(e); setOpen(false); }} onMouseDown={stop} onKeyDown={stop}>
+        <div style={S.backdrop} onClick={e => { stop(e); closePicker(); }} onMouseDown={stop} onKeyDown={stop}>
           <div ref={modalRef} style={S.modal} onClick={stop} onMouseDown={stop} onKeyDown={stop}>
             <div style={S.modalHdr}>
               <span style={S.modalTtl}>Select a Video</span>
             </div>
             <div style={S.modalBody}>
-              <VideoPickerEditor
-                initialVideoUrl={videourl}
-                onSelect={handleSelect}
-                onCancel={() => setOpen(false)}
-              />
+              {authState === 'loading' && (
+                <div style={S.centeredState}>
+                  <style>{'@keyframes krogerspin{to{transform:rotate(360deg)}}'}</style>
+                  <span style={S.spinner} />
+                  <p style={S.authText}>Signing you in…</p>
+                </div>
+              )}
+
+              {authState === 'error' && (
+                <div style={S.centeredState}>
+                  <div style={S.errIcon}>
+                    <svg width="40" height="40" fill="none" stroke="#ef4444" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
+                      <circle cx="12" cy="12" r="10"/>
+                      <line x1="12" y1="8" x2="12" y2="13"/>
+                      <circle cx="12" cy="16.5" r="0.75" fill="#ef4444" stroke="none"/>
+                    </svg>
+                  </div>
+                  <p style={S.errTitle}>Sign-in required</p>
+                  <p style={S.errDesc}>We couldn't verify your session.<br/>Please try signing in again.</p>
+                  <button style={S.btnRetry} onClick={e => { stop(e); runAuth(); }}>Try Again</button>
+                </div>
+              )}
+
+              {authState === 'ready' && (
+                <VideoPickerEditor
+                  initialVideoUrl={videourl}
+                  onSelect={handleSelect}
+                  onCancel={closePicker}
+                />
+              )}
             </div>
           </div>
         </div>,
