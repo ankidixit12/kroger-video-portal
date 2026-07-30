@@ -1,0 +1,35 @@
+{
+  "name": "staffbase-integration-ui-qumu",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "start": "node server.js",
+    "build": "webpack --config portal/webpack.config.js --context portal",
+    "build:widget": "cd staffbase-widget && npm run build",
+    "test": "jest --runInBand",
+    "test:coverage": "jest --coverage --runInBand"
+  },
+  "jest": {
+    "testEnvironment": "node",
+    "collectCoverageFrom": [
+      "server.js",
+      "webpack.config.js",
+      "qumu_cloud.js",
+      "portal/config/constants.js"
+    ],
+    "coverageThreshold": {
+      "global": {
+        "branches": 95,
+        "functions": 95,
+        "lines": 95,
+        "statements": 95
+      }
+    }
+  },
+  "devDependencies": {
+    "dotenv": "^17.4.2",
+    "jest": "^29.7.0",
+    "webpack": "^5.108.4",
+    "webpack-cli": "^7.2.1"
+  }
+}
