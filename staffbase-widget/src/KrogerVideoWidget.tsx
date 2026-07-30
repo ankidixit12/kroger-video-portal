@@ -2,8 +2,12 @@ import React, { useState } from 'react';
 
 function toEmbed(url: string): string {
   try {
-    const id = new URL(url).searchParams.get('v');
-    return id ? `https://www.youtube.com/embed/${id}?rel=0&modestbranding=1` : url;
+    const u = new URL(url);
+    const ytId = u.searchParams.get('v');
+    if (ytId) return `https://www.youtube.com/embed/${ytId}?rel=0&modestbranding=1`;
+    // Disable autoplay for Qumu and other non-YouTube players
+    u.searchParams.set('autoplay', 'false');
+    return u.toString();
   } catch { return url; }
 }
 
@@ -53,7 +57,7 @@ export default function KrogerVideoWidget({ division, videotitle, videourl }: Pr
               style={S.iframe}
               src={toEmbed(videourl)}
               title={videotitle || 'Training Video'}
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+              allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
               allowFullScreen
               onError={() => setIframeError(true)}
             />
