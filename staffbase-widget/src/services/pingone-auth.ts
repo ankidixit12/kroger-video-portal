@@ -16,7 +16,7 @@ const PING_CONFIG = {
   envId: '6c0241eb-6d4c-4b98-bdfb-5ab44b0d7112',
   clientId: '2fd84c5a-722e-44b8-a864-f736bc648eb3',
   redirectUri: 'https://happy-island-0506c550f.7.azurestaticapps.net/callback.html',
-  scope: 'openid profile offline_access',
+  scope: 'openid profile email offline_access',
   // PingOne region domain. This environment lives in Asia-Pacific (Singapore),
   // so the auth domain is pingone.sg — NOT pingone.com. Using the wrong region
   // domain causes a NOT_FOUND error at /authorize.
