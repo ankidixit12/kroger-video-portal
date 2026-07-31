@@ -13,14 +13,20 @@
 // Replace the REPLACE_WITH_* placeholders with real values before deploying.
 
 const PING_CONFIG = {
-  envId: '9116e8b7-da00-49a5-a2f7-e34b1465cdb4',
-  clientId: '94d21ca6-1245-4642-aaa9-a6aba7e5fa21',
+  envId: '6c0241eb-6d4c-4b98-bdfb-5ab44b0d7112',
+  clientId: '2fd84c5a-722e-44b8-a864-f736bc648eb3',
   redirectUri: 'https://happy-island-0506c550f.7.azurestaticapps.net/callback.html',
-  scope: 'openid email offline_access',
+  scope: 'openid profile email offline_access',
+  // PingOne region domain. This environment lives in Asia-Pacific (Singapore),
+  // so the auth domain is pingone.sg — NOT pingone.com. Using the wrong region
+  // domain causes a NOT_FOUND error at /authorize.
+  //   NA  -> auth.pingone.com   | EU  -> auth.pingone.eu
+  //   APAC-> auth.pingone.sg    | CA  -> auth.pingone.ca
+  authDomain: 'auth.pingone.com',
   kongBaseUrl: 'REPLACE_WITH_KONG_GATEWAY_BASE_URL',
 };
 
-const PING_BASE = `https://auth.pingone.com/${PING_CONFIG.envId}/as`;
+const PING_BASE = `https://${PING_CONFIG.authDomain}/${PING_CONFIG.envId}/as`;
 
 // sessionStorage keys
 const TOKEN_KEY = 'pingone_access_token';
