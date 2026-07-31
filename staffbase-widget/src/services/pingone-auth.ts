@@ -122,20 +122,16 @@ async function popupAuth(prompt: 'none' | 'login'): Promise<string> {
     `&prompt=${encodeURIComponent(prompt)}`;
 
   const redirectOrigin = new URL(PING_CONFIG.redirectUri).origin;
-  // Keep the auth window as small and unobtrusive as possible. For the silent
-  // (prompt=none) flow it only needs to live long enough to POST the code back,
-  // so we shove it off-screen and shrink it. Browsers clamp size to a ~100px
-  // minimum and may pull an off-screen popup partly back on-screen.
+  // DEBUG MODE: open a normal, visible, developer-friendly popup so you can
+  // watch the PingOne redirects in the Network tab. Revert to the small
+  // off-screen popup (and re-enable auto-close below) once auth works.
   const popup = window.open(
     authUrl,
     'pingone_auth',
-    'width=100,height=100,left=0,top=0,menubar=no,toolbar=no,location=no,status=no,resizable=no,scrollbars=no',
+    'width=600,height=700,left=200,top=100,menubar=no,toolbar=no,location=yes,status=yes,resizable=yes,scrollbars=yes',
   );
-  if (popup && prompt === 'none') {
-    // moveTo/resizeTo work on a window we opened even when its content is
-    // cross-origin (they act on the window, not the document).
-    try { popup.moveTo(-4000, -4000); popup.resizeTo(100, 100); } catch { /* ignore */ }
-  }
+  // eslint-disable-next-line no-console
+  console.log('[pingone-auth] opening authorize URL:', authUrl);
 
   return new Promise<string>((resolve, reject) => {
     let settled = false;
@@ -143,7 +139,9 @@ async function popupAuth(prompt: 'none' | 'login'): Promise<string> {
     const cleanup = () => {
       window.removeEventListener('message', handler);
       clearTimeout(timer);
-      if (popup && !popup.closed) popup.close();
+      // DEBUG MODE: leave the popup open so you can inspect the Network tab.
+      // Re-enable the auto-close line below once auth works.
+      // if (popup && !popup.closed) popup.close();
     };
 
     const handler = (event: MessageEvent) => {
@@ -163,9 +161,9 @@ async function popupAuth(prompt: 'none' | 'login'): Promise<string> {
       }
     };
 
-    // Silent attempts should give up fast so the hidden window never lingers;
-    // interactive login needs time for the user to type credentials.
-    const timeoutMs = prompt === 'none' ? 3000 : 10000;
+    // DEBUG MODE: long timeouts so the popup lingers and you can read the
+    // PingOne error page / Network tab. Restore 3000 / 10000 once it works.
+    const timeoutMs = prompt === 'none' ? 120000 : 120000;
     const timer = setTimeout(() => {
       if (settled) return;
       settled = true;
