@@ -14,7 +14,7 @@
 
 const PING_CONFIG = {
   envId: '9116e8b7-da00-49a5-a2f7-e34b1465cdb4',
-  clientId: '94d21ca6-1245-4642-aaa9-a6aba7e5fa21',
+  clientId: 'e485ebfe-f0fd-43da-b2f8-b8317f976aac',
   redirectUri: 'https://happy-island-0506c550f.7.azurestaticapps.net/callback.html',
   scope: 'openid email offline_access',
   kongBaseUrl: 'REPLACE_WITH_KONG_GATEWAY_BASE_URL',
