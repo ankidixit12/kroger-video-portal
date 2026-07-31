@@ -17,10 +17,16 @@ const PING_CONFIG = {
   clientId: 'e485ebfe-f0fd-43da-b2f8-b8317f976aac',
   redirectUri: 'https://happy-island-0506c550f.7.azurestaticapps.net/callback.html',
   scope: 'openid email offline_access',
+  // PingOne region domain. This environment lives in Asia-Pacific (Singapore),
+  // so the auth domain is pingone.sg — NOT pingone.com. Using the wrong region
+  // domain causes a NOT_FOUND error at /authorize.
+  //   NA  -> auth.pingone.com   | EU  -> auth.pingone.eu
+  //   APAC-> auth.pingone.sg    | CA  -> auth.pingone.ca
+  authDomain: 'auth.pingone.sg',
   kongBaseUrl: 'REPLACE_WITH_KONG_GATEWAY_BASE_URL',
 };
 
-const PING_BASE = `https://auth.pingone.com/${PING_CONFIG.envId}/as`;
+const PING_BASE = `https://${PING_CONFIG.authDomain}/${PING_CONFIG.envId}/as`;
 
 // sessionStorage keys
 const TOKEN_KEY = 'pingone_access_token';
