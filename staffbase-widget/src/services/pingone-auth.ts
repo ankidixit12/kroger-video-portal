@@ -13,10 +13,10 @@
 // Replace the REPLACE_WITH_* placeholders with real values before deploying.
 
 const PING_CONFIG = {
-  envId: '6c0241eb-6d4c-4b98-bdfb-5ab44b0d7112',
-  clientId: 'de6b92bb-b02f-431b-82bf-1ae96f570f2e',
-  redirectUri: 'https://krogertest.staffbase.com/auth/oidc/kroger-test-ping/callback',
-  scope: 'openid profile email offline_access',
+  envId: '9116e8b7-da00-49a5-a2f7-e34b1465cdb4',
+  clientId: '94d21ca6-1245-4642-aaa9-a6aba7e5fa21',
+  redirectUri: 'https://happy-island-0506c550f.7.azurestaticapps.net/callback.html',
+  scope: 'openid email offline_access',
   kongBaseUrl: 'REPLACE_WITH_KONG_GATEWAY_BASE_URL',
 };
 
