@@ -1,6 +1,28 @@
 import React, { useEffect, useState } from 'react';
 import KROGER_LOGO from '../../qumu2/staffbase-widget/public/assets/Kroger.png';
-import { STOCKQUOTE_API_URL } from './constants';
+import { STOCKQUOTE_API_URL, PLUGIN_ID, TOKEN_BASE_PATH } from './constants';
+
+async function fetchStockToken(): Promise<string> {
+  const res = await fetch(`${TOKEN_BASE_PATH}/${PLUGIN_ID}/service/token`, { credentials: 'include' });
+  if (!res.ok) throw new Error('fetchStockToken HTTP ' + res.status);
+  const json = await res.json();
+  const jwt = json?.jwt;
+  if (!jwt || typeof jwt !== 'string') throw new Error('fetchStockToken: missing or invalid JWT');
+  return jwt;
+}
+
+async function getAuthHeaders(): Promise<Record<string, string>> {
+  const token = await fetchStockToken();
+  return { Authorization_jwt: token };
+}
+
+async function apiFetchStockQuote(): Promise<Response> {
+  let res = await fetch(STOCKQUOTE_API_URL, { headers: await getAuthHeaders() });
+  if (res.status === 401) {
+    res = await fetch(STOCKQUOTE_API_URL, { headers: await getAuthHeaders() });
+  }
+  return res;
+}
 interface StockData {
   name: string;
   symbol: string;
@@ -102,8 +124,11 @@ const KrogerStockQuote: React.FC = () => {
   const [error, setError] = useState(false);
 
   const fetchData = () => {
-    fetch(STOCKQUOTE_API_URL)
-      .then((r) => r.json())
+    apiFetchStockQuote()
+      .then((r) => {
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        return r.json();
+      })
       .then((json: StockData) => { setData(json); setError(false); })
       .catch(() => setError(true));
   };
