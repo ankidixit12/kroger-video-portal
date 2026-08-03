@@ -2,6 +2,16 @@ import React, { useEffect, useState } from 'react';
 import KROGER_LOGO from '../../public/assets/Kroger.png';
 
 declare const process: { env: { STOCKQUOTE_API_URL: string } };
+
+async function fetchToken(pluginId: string): Promise<string> {
+  const res = await fetch(`/api/installations/${pluginId}/service/token`, { credentials: 'include' });
+  if (!res.ok) throw new Error('fetchToken HTTP ' + res.status);
+  const json = await res.json();
+  const jwt = json?.jwt;
+  if (!jwt || typeof jwt !== 'string') throw new Error('fetchToken: missing JWT in response');
+  return jwt;
+}
+
 interface StockData {
   name: string;
   symbol: string;
@@ -98,15 +108,27 @@ const styles: Record<string, React.CSSProperties> = {
   },
 };
 
-const KrogerStockQuote: React.FC = () => {
+interface Props { pluginId?: string; }
+
+const KrogerStockQuote: React.FC<Props> = ({ pluginId = '' }) => {
   const [data, setData] = useState<StockData | null>(null);
   const [error, setError] = useState(false);
 
-  const fetchData = () => {
-    fetch(process.env.STOCKQUOTE_API_URL)
-      .then((r) => r.json())
-      .then((json: StockData) => { setData(json); setError(false); })
-      .catch(() => setError(true));
+  const fetchData = async () => {
+    try {
+      if (!pluginId) return;
+      const token = await fetchToken(pluginId);
+      let res = await fetch(process.env.STOCKQUOTE_API_URL, { headers: { Authorization_jwt: token } });
+      if (res.status === 401) {
+        const retryToken = await fetchToken(pluginId);
+        res = await fetch(process.env.STOCKQUOTE_API_URL, { headers: { Authorization_jwt: retryToken } });
+      }
+      const json: StockData = await res.json();
+      setData(json);
+      setError(false);
+    } catch {
+      setError(true);
+    }
   };
 
   useEffect(() => {
