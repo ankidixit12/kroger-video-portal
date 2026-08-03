@@ -8,23 +8,6 @@ import {
 } from '@staffbase/widget-sdk';
 import KrogerStockQuote from './KrogerStockQuote';
 
-function resolveInstallationId(): string {
-  try {
-    const src = (document.currentScript as HTMLScriptElement | null)?.src ?? '';
-    const fromSrc = src.match(/\/plugin\/files\/([a-f0-9]{24})\//i)?.[1];
-    if (fromSrc) return fromSrc;
-    const fromAttr = (document.currentScript as HTMLScriptElement | null)
-      ?.getAttribute('data-plugin-id') ?? '';
-    if (fromAttr) return fromAttr;
-    const href = (window.top as Window).location.href;
-    const fromUrl = href.match(/installations\/([a-f0-9]{24})/i)?.[1];
-    if (fromUrl) return fromUrl;
-  } catch { /* cross-origin or SSR */ }
-  return '';
-}
-
-const PLUGIN_ID = resolveInstallationId();
-
 const icon = 'data:image/svg+xml;base64,Cjxzdmcgd2lkdGg9IjQ4IiBoZWlnaHQ9IjQ4IiB2aWV3Qm94PSIwIDAgNDggNDgiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CiAgPHJlY3QgeD0iNCIgeT0iOCIgd2lkdGg9IjQwIiBoZWlnaHQ9IjMyIiByeD0iNCIgc3Ryb2tlPSIjMDAwIiBzdHJva2Utd2lkdGg9IjMiIGZpbGw9Im5vbmUiLz4KICA8cG9seWxpbmUgcG9pbnRzPSI4LDMyIDE2LDI0IDIyLDI4IDMwLDE2IDQwLDIwIiBzdHJva2U9IiMxNmEzNGEiIHN0cm9rZS13aWR0aD0iMyIgZmlsbD0ibm9uZSIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIi8+CiAgPGNpcmNsZSBjeD0iMTYiIGN5PSIyNCIgcj0iMiIgZmlsbD0iIzE2YTM0YSIvPgogIDxjaXJjbGUgY3g9IjIyIiBjeT0iMjgiIHI9IjIiIGZpbGw9IiMxNmEzNGEiLz4KICA8Y2lyY2xlIGN4PSIzMCIgY3k9IjE2IiByPSIyIiBmaWxsPSIjMTZhMzRhIi8+Cjwvc3ZnPgo=';
 
 const configurationSchema = {
@@ -37,7 +20,10 @@ const configurationSchema = {
 
 const uiSchema = {};
 
-const factory: BlockFactory = (BaseBlockClass, _widgetApi) => {
+const factory: BlockFactory = (BaseBlockClass, widgetApi) => {
+  let _branchUrl = '';
+  try { _branchUrl = widgetApi.getBranchInformation().webUrl; } catch { /* ignore */ }
+
   return class KrogerStockQuoteBlock extends BaseBlockClass implements BaseBlock {
     private root: Root | null = null;
     private editorRoot: Root | null = null;
@@ -52,7 +38,7 @@ const factory: BlockFactory = (BaseBlockClass, _widgetApi) => {
         this.root = createRoot(container);
         this.blockContainer = container;
       }
-      this.root.render(<KrogerStockQuote pluginId={PLUGIN_ID} />);
+      this.root.render(<KrogerStockQuote />);
     }
 
     public renderBlockInEditor(container: HTMLElement): void {
@@ -61,7 +47,7 @@ const factory: BlockFactory = (BaseBlockClass, _widgetApi) => {
         this.editorRoot = createRoot(container);
         this.editorContainer = container;
       }
-      this.editorRoot.render(<KrogerStockQuote pluginId={PLUGIN_ID} />);
+      this.editorRoot.render(<KrogerStockQuote />);
     }
 
     public unmountBlock(_container: HTMLElement): void {

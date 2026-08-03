@@ -126,36 +126,22 @@
   </div>
 
   <script>
-    var PLUGIN_ID = '6a3bd7361da609538cb79dac';
-    var _jwt = null;
-
-    function getJwt() {
-      if (_jwt) return Promise.resolve(_jwt);
-      return fetch('/api/installations/' + PLUGIN_ID + '/service/token', { credentials: 'include' })
-        .then(function(r) { return r.json(); })
-        .then(function(json) {
-          if (!json.jwt) throw new Error('No token');
-          _jwt = json.jwt;
-          return _jwt;
-        });
-    }
-
     function applyData(data) {
       const change = data.changeFromPreviousClose;
       const pct = data.percentChangeFromPreviousClose;
       const sign = change >= 0 ? '+' : '';
+
       document.getElementById('stock-price').textContent = '$' + data.currentPrice.toFixed(2);
+
       const changeEl = document.getElementById('stock-change');
       changeEl.textContent = sign + '$' + Math.abs(change).toFixed(2) + ' today (' + sign + pct.toFixed(2) + '%)';
       changeEl.className = 'stock-change ' + (change >= 0 ? 'positive' : 'negative');
+
       document.getElementById('stock-date').textContent = data.date + '  ' + data.time + ' ET';
     }
 
     function fetchAndRender() {
-      getJwt()
-        .then(function(jwt) {
-          return fetch('/api/stockquote', { headers: { 'Authorization_jwt': jwt } });
-        })
+      fetch('/api/stockquote')
         .then(function(r) { return r.json(); })
         .then(applyData)
         .catch(function() {

@@ -11,8 +11,8 @@ const QUOTE_URL   = 'https://stockquote-dfhmhnf4bbg0cwck.eastus2-01.azurewebsite
 let _cachedJwt = null;
 
 function basicAuth() {
-  const u = process.env.QUMU_USERNAME || 'qumu';
-  const p = process.env.QUMU_PASSWORD || 'qumu@123456';
+  const u = process.env.QUMU_USERNAME || '';
+  const p = process.env.QUMU_PASSWORD || '';
   return 'Basic ' + Buffer.from(u + ':' + p).toString('base64');
 }
 
@@ -74,11 +74,8 @@ module.exports = {
     headers: { 'Access-Control-Allow-Origin': '*' },
     setupMiddlewares(middlewares, devServer) {
       devServer.app.get('/api/stockquote', async (req, res) => {
-        res.setHeader('Access-Control-Allow-Origin', '*');
         try {
-          // Use Authorization_jwt from the browser if provided (mirrors production flow),
-          // otherwise fall back to fetching our own JWT with server credentials.
-          let jwt = req.headers['authorization_jwt'] || await getJwt();
+          let jwt = await getJwt();
           let { status, body } = await httpsGet(QUOTE_URL, { Authorization: 'Bearer ' + jwt, Accept: 'application/json' });
           if (status === 401) {
             _cachedJwt = null;
@@ -102,7 +99,9 @@ module.exports = {
         secure: true,
         pathRewrite: { '^/api/kulus': '/staffbase-qumu/kulus' },
         onProxyReq(proxyReq) {
-          proxyReq.setHeader('Authorization', basicAuth());
+          const u = process.env.QUMU_USERNAME || '';
+          const p = process.env.QUMU_PASSWORD || '';
+          if (u) proxyReq.setHeader('Authorization', 'Basic ' + Buffer.from(u + ':' + p).toString('base64'));
         },
       },
       {
@@ -113,7 +112,9 @@ module.exports = {
         secure: true,
         pathRewrite: { '^/api/qumu-token': '/staffbase-qumu/api/token' },
         onProxyReq(proxyReq) {
-          proxyReq.setHeader('Authorization', basicAuth());
+          const u = process.env.QUMU_USERNAME || '';
+          const p = process.env.QUMU_PASSWORD || '';
+          if (u) proxyReq.setHeader('Authorization', 'Basic ' + Buffer.from(u + ':' + p).toString('base64'));
         },
       },
       {
@@ -125,7 +126,9 @@ module.exports = {
         secure: true,
         pathRewrite: { '^/api/installations/([^/]+)/service/token': '/staffbase-qumu/api/token/$1' },
         onProxyReq(proxyReq) {
-          proxyReq.setHeader('Authorization', basicAuth());
+          const u = process.env.QUMU_USERNAME || '';
+          const p = process.env.QUMU_PASSWORD || '';
+          if (u) proxyReq.setHeader('Authorization', 'Basic ' + Buffer.from(u + ':' + p).toString('base64'));
         },
       },
     ],
