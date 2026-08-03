@@ -1,3 +1,4 @@
+import { getAccessToken } from "./pingone-auth";
 
 let _staffbaseBase  = 'https://krogertest.staffbase.com';
 let _installationId = '6a3bd7361da609538cb79dac';
@@ -38,7 +39,7 @@ export async function fetchQumuToken(): Promise<string> {
 }
 
 async function apiHeaders(extra?: Record<string, string>): Promise<Record<string, string>> {
-  const token = await fetchQumuToken();
+  const token = await getAccessToken();
   return { Authorization_jwt: token, ...extra };
 }
 
