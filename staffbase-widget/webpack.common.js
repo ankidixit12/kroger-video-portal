@@ -24,6 +24,7 @@ module.exports = [
         'process.env.API_BASE_URL':    JSON.stringify(process.env.API_BASE_URL    || 'http://localhost:3000'),
         'process.env.QUMU_USERNAME':   JSON.stringify(process.env.QUMU_USERNAME   || ''),
         'process.env.QUMU_PASSWORD':   JSON.stringify(process.env.QUMU_PASSWORD   || ''),
+        'process.env.QUMU_API_URL':    JSON.stringify(process.env.QUMU_API_URL    || 'https://staffbase-qumu-gfe9e3e8ced6g3cu.eastus2-01.azurewebsites.net/mycart-qumu/kulus'),
       }),
       new CopyPlugin({
         patterns: [
@@ -111,6 +112,7 @@ module.exports = [
         'process.env.API_BASE_URL':    JSON.stringify(process.env.API_BASE_URL    || 'http://localhost:3000'),
         'process.env.QUMU_USERNAME':   JSON.stringify(process.env.QUMU_USERNAME   || ''),
         'process.env.QUMU_PASSWORD':   JSON.stringify(process.env.QUMU_PASSWORD   || ''),
+        'process.env.QUMU_API_URL':    JSON.stringify(process.env.QUMU_API_URL    || 'https://staffbase-qumu-gfe9e3e8ced6g3cu.eastus2-01.azurewebsites.net/mycart-qumu/kulus'),
       }),
       new CopyPlugin({
         patterns: [

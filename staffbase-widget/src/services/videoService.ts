@@ -3,7 +3,8 @@ let _staffbaseBase  = 'https://krogertest.staffbase.com';
 let _installationId = '6a3bd7361da609538cb79dac';
 let _pluginId = '6a62f458a1562171e13f19d1';
 
-const QUMU_BASE = 'https://staffbase-qumu-gfe9e3e8ced6g3cu.eastus2-01.azurewebsites.net/staffbase-qumu/kulus';
+declare const process: { env: { QUMU_API_URL: string } };
+const QUMU_BASE = process.env.QUMU_API_URL;
 
 const QUMU_TOKEN_BASE = '/api/installations';
 
