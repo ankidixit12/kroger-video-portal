@@ -1,10 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import KROGER_LOGO from '../../public/assets/Kroger.png';
+import { fetchQumuToken } from './services/videoService';
 
 declare const process: { env: { STOCKQUOTE_API_URL: string } };
+
 interface StockData {
   name: string;
   symbol: string;
+  market?: string;
   exchange?: string;
   currentPrice: number;
   changeFromPreviousClose: number;
@@ -102,11 +105,20 @@ const KrogerStockQuote: React.FC = () => {
   const [data, setData] = useState<StockData | null>(null);
   const [error, setError] = useState(false);
 
-  const fetchData = () => {
-    fetch(process.env.STOCKQUOTE_API_URL)
-      .then((r) => r.json())
-      .then((json: StockData) => { setData(json); setError(false); })
-      .catch(() => setError(true));
+  const fetchData = async () => {
+    try {
+      const token = await fetchQumuToken();
+      let res = await fetch(process.env.STOCKQUOTE_API_URL, { headers: { Authorization_jwt: token } });
+      if (res.status === 401) {
+        const retryToken = await fetchQumuToken();
+        res = await fetch(process.env.STOCKQUOTE_API_URL, { headers: { Authorization_jwt: retryToken } });
+      }
+      const json: StockData = await res.json();
+      setData(json);
+      setError(false);
+    } catch {
+      setError(true);
+    }
   };
 
   useEffect(() => {
@@ -141,7 +153,7 @@ const KrogerStockQuote: React.FC = () => {
         <img src={KROGER_LOGO} alt="Kroger" style={{ width: '80px', height: '80px', objectFit: 'contain' }} />
       </div>
       <div style={styles.info}>
-        <div style={styles.ticker}>{data ? `${data.exchange ?? 'NYSE'}: ${data.symbol}` : 'NYSE: KR'}</div>
+        <div style={styles.ticker}>{data ? `${data.market ?? data.exchange ?? 'NYSE'}: ${data.symbol}` : 'NYSE: KR'}</div>
         <div style={styles.company}>{data?.name ?? 'The Kroger Co.'}</div>
       </div>
       <div style={styles.priceSection}>
