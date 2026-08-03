@@ -207,15 +207,6 @@ async function exchangeCodeForTokens(code: string): Promise<string> {
 // ─── 6. Main entry point ────────────────────────────────────────────────────────
 // The ONLY auth function widget code should call directly.
 
-// DEV-ONLY fallback: when the real PingOne flow can't complete, stash a random
-// token in sessionStorage so the widget can proceed during development.
-// TODO: remove before production — this is not a valid credential.
-function storeFallbackToken(): string {
-  const fallback = 'dev_' + generateCodeVerifier();
-  storeTokens(fallback, null, 3600);
-  return fallback;
-}
-
 export async function getAccessToken(): Promise<string> {
   // Step 1: valid stored token
   const stored = getStoredToken();
@@ -234,17 +225,11 @@ export async function getAccessToken(): Promise<string> {
 
     // Step 4: fall back to interactive login only if the session is fully expired
     if (message === 'login_required' || message === 'timeout') {
-      try {
-        const code = await popupAuth('login');
-        return await exchangeCodeForTokens(code);
-      } catch {
-        // DEV-ONLY: don't hard-fail — use a random cached token.
-        return storeFallbackToken();
-      }
+      const code = await popupAuth('login');
+      return await exchangeCodeForTokens(code);
     }
 
-    // Step 5: anything else — DEV-ONLY random cached token instead of failing.
-    return storeFallbackToken();
+    throw err;
   }
 }
 
