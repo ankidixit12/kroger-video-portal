@@ -1,6 +1,6 @@
 const https = require('https');
 
-const STOCKQUOTE_URL  = 'https://stockquote-dfhmhnf4bbg0cwck.eastus2-01.azurewebsites.net/staffbase-stockQuote/getDelayedQuotes';
+const STOCKQUOTE_URL  = 'https://stockquote-dfhmhnf4bbg0cwck.eastus2-01.azurewebsites.net/mycart-stockquote/getDelayedQuotes';
 const QUMU_TOKEN_URL  = 'https://staffbase-qumu-gfe9e3e8ced6g3cu.eastus2-01.azurewebsites.net/staffbase-qumu/api/token';
 const PLUGIN_ID       = process.env.QUMU_PLUGIN_ID || '6a3bd7361da609538cb79dac';
 

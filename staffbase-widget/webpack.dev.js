@@ -6,7 +6,7 @@ require('dotenv').config({ path: path.resolve(__dirname, '.env'), override: true
 
 const PLUGIN_ID   = '6a3bd7361da609538cb79dac';
 const TOKEN_URL   = `https://staffbase-qumu-gfe9e3e8ced6g3cu.eastus2-01.azurewebsites.net/staffbase-qumu/api/token/${PLUGIN_ID}`;
-const QUOTE_URL   = 'https://stockquote-dfhmhnf4bbg0cwck.eastus2-01.azurewebsites.net/staffbase-stockQuote/getDelayedQuotes';
+const QUOTE_URL   = 'https://stockquote-dfhmhnf4bbg0cwck.eastus2-01.azurewebsites.net/mycart-stockquote/getDelayedQuotes';
 
 let _cachedJwt = null;
 
