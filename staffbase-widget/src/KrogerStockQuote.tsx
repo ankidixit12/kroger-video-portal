@@ -129,15 +129,26 @@ const KrogerStockQuote: React.FC = () => {
   const fetchData = useCallback(async () => {
     try {
       const token = await getAccessToken();
-      let res = await fetch(process.env.STOCKQUOTE_API_URL, { headers: { Authorization: `Bearer ${token}` } });
+      let res = await fetch(process.env.STOCKQUOTE_API_URL, {
+        headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
+      });
       if (res.status === 401) {
         const retryToken = await getAccessToken();
-        res = await fetch(process.env.STOCKQUOTE_API_URL, { headers: { Authorization: `Bearer ${retryToken}` } });
+        res = await fetch(process.env.STOCKQUOTE_API_URL, {
+          headers: { Authorization: `Bearer ${retryToken}`, Accept: 'application/json' },
+        });
+      }
+      if (!res.ok) {
+        const errBody = await res.text();
+        console.error(`[StockQuote] API error ${res.status}:`, errBody);
+        setDataError(true);
+        return;
       }
       const json: StockData = await res.json();
       setData(json);
       setDataError(false);
-    } catch {
+    } catch (err) {
+      console.error('[StockQuote] fetch failed:', err);
       setDataError(true);
     }
   }, []);
