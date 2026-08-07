@@ -1,5 +1,9 @@
 import { getAccessToken } from "./pingone-auth";
 
+function escapeSqlWildcards(s: string): string {
+  return s.replace(/%/g, '\\%').replace(/_/g, '\\_');
+}
+
 let _staffbaseBase  = 'https://krogertest.staffbase.com';
 let _installationId = '6a3bd7361da609538cb79dac';
 let _pluginId = '6a62f458a1562171e13f19d1';
@@ -212,7 +216,7 @@ export async function fetchVideosByFilter(params: {
   }
 
   if (params.search) {
-    bodyRules.push({ comparator: 'CONTAINS', field: { name: 'title' }, value: params.search });
+    bodyRules.push({ comparator: 'CONTAINS', field: { name: 'title' }, value: escapeSqlWildcards(params.search) });
   }
 
   bodyRules.push({ comparator: 'IS', field: { name: 'state' }, value: 'PUBLISHED' });
