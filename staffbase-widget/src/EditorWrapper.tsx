@@ -36,6 +36,11 @@ function isExpiringSoon(d: string): boolean {
   return t >= now && t <= oneMonthFromNow;
 }
 
+// Survives the same-frame PingOne redirect (getAccessToken()'s silent
+// prompt=none attempt reloads the whole page). Set while the picker is open
+// so it can auto-reopen after the reload instead of requiring a second click.
+const PICKER_PENDING_KEY = 'kroger_picker_pending';
+
 const S: Record<string, React.CSSProperties> = {
   wrap:       { fontFamily: "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif", background: '#fff', borderRadius: 12, overflow: 'hidden', boxShadow: '0 1px 4px rgba(0,0,0,0.08)' },
 
@@ -146,13 +151,26 @@ export default function EditorWrapper({ division: _division, videotitle, videour
     stop(e);
     if (open) return;
     setOpen(true);
+    sessionStorage.setItem(PICKER_PENDING_KEY, '1');
     runAuth();
   }
 
   function closePicker() {
     setOpen(false);
     setAuthState('idle');
+    sessionStorage.removeItem(PICKER_PENDING_KEY);
   }
+
+  // If the page just reloaded mid-way through the silent PingOne redirect
+  // (picker was open when getAccessToken() navigated away), auto-resume
+  // instead of leaving the user back at the closed/default state.
+  useEffect(() => {
+    if (sessionStorage.getItem(PICKER_PENDING_KEY) === '1') {
+      setOpen(true);
+      runAuth();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   function handleSelect(d: string, t: string, u: string, dur: string, exp: string, th: string) {
     onSelect(d, t, u, dur, exp, th);
