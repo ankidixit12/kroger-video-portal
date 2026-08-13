@@ -7,7 +7,9 @@
 // Security notes:
 //  - Public SPA client — NO client_secret. PKCE protects the code exchange.
 //  - Tokens live in sessionStorage (cleared when the tab closes).
-//  - No iframes to PingOne and no full-page redirects (window.location.href).
+//  - Silent (prompt=none) re-auth uses a same-frame redirect (window.location),
+//    not a nested iframe to PingOne — see redirectAuth()/consumeRedirectResult().
+//    Interactive login still uses a popup so the widget UI isn't disrupted.
 
 // ─── Config ─────────────────────────────────────────────────────────────────
 // Replace the REPLACE_WITH_* placeholders with real values before deploying.
@@ -34,6 +36,9 @@ const REFRESH_KEY = 'pingone_refresh_token';
 const EXPIRY_KEY = 'pingone_token_expiry';
 const PKCE_VERIFIER_KEY = 'pkce_verifier';
 const OAUTH_STATE_KEY = 'oauth_state';
+// Same-frame redirect flow bookkeeping (see redirectAuth()/consumeRedirectResult()).
+const REDIRECT_RETURN_KEY = 'pingone_redirect_return_url';
+const REDIRECT_RESULT_KEY = 'pingone_redirect_result';
 
 // ─── 1. PKCE utilities ────────────────────────────────────────────────────────
 
@@ -106,7 +111,68 @@ async function silentRefresh(): Promise<string | null> {
   }
 }
 
-// ─── 4. Popup auth (PKCE authorization code) ────────────────────────────────────
+// ─── 4. Popup / redirect auth (PKCE authorization code) ────────────────────────
+
+function buildAuthUrl(prompt: 'none' | 'login', codeChallenge: string, state: string): string {
+  return (
+    `${PING_BASE}/authorize` +
+    `?client_id=${encodeURIComponent(PING_CONFIG.clientId)}` +
+    `&response_type=code` +
+    `&scope=${encodeURIComponent(PING_CONFIG.scope)}` +
+    `&redirect_uri=${encodeURIComponent(PING_CONFIG.redirectUri)}` +
+    `&code_challenge=${encodeURIComponent(codeChallenge)}` +
+    `&code_challenge_method=S256` +
+    `&state=${encodeURIComponent(state)}` +
+    `&prompt=${encodeURIComponent(prompt)}`
+  );
+}
+
+// Silent, same-frame redirect attempt. Navigates the widget's own frame to
+// PingOne (single hop — not a nested iframe), relying on PingOne's own
+// session cookie already set in the browser (e.g. from the Staffbase login).
+// This never "returns" in the normal sense: the page unloads. The result is
+// picked back up by consumeRedirectResult() after PingOne redirects back to
+// callback.html and callback.html navigates back here.
+async function redirectAuth(): Promise<void> {
+  const codeVerifier = generateCodeVerifier();
+  const codeChallenge = await generateCodeChallenge(codeVerifier);
+  const state = generateCodeVerifier();
+
+  sessionStorage.setItem(PKCE_VERIFIER_KEY, codeVerifier);
+  sessionStorage.setItem(OAUTH_STATE_KEY, state);
+  sessionStorage.setItem(REDIRECT_RETURN_KEY, window.location.href);
+
+  window.location.assign(buildAuthUrl('none', codeChallenge, state));
+}
+
+// Checks whether we just navigated back from a redirectAuth() attempt.
+// Returns the access token on success, an error code string on failure
+// (e.g. 'login_required'), or null if there's no pending redirect result.
+async function consumeRedirectResult(): Promise<{ token: string } | { error: string } | null> {
+  const raw = sessionStorage.getItem(REDIRECT_RESULT_KEY);
+  if (!raw) return null;
+  sessionStorage.removeItem(REDIRECT_RESULT_KEY);
+  sessionStorage.removeItem(REDIRECT_RETURN_KEY);
+
+  const expectedState = sessionStorage.getItem(OAUTH_STATE_KEY);
+  let data: { code?: string; state?: string; error?: string };
+  try {
+    data = JSON.parse(raw);
+  } catch {
+    return { error: 'invalid_response' };
+  }
+
+  if (!expectedState || data.state !== expectedState) return { error: 'invalid_state' };
+  if (data.error) return { error: data.error };
+  if (!data.code) return { error: 'invalid_response' };
+
+  try {
+    const token = await exchangeCodeForTokens(data.code);
+    return { token };
+  } catch {
+    return { error: 'token_exchange_failed' };
+  }
+}
 
 async function popupAuth(prompt: 'none' | 'login'): Promise<string> {
   const codeVerifier = generateCodeVerifier();
@@ -116,16 +182,7 @@ async function popupAuth(prompt: 'none' | 'login'): Promise<string> {
   sessionStorage.setItem(PKCE_VERIFIER_KEY, codeVerifier);
   sessionStorage.setItem(OAUTH_STATE_KEY, state);
 
-  const authUrl =
-    `${PING_BASE}/authorize` +
-    `?client_id=${encodeURIComponent(PING_CONFIG.clientId)}` +
-    `&response_type=code` +
-    `&scope=${encodeURIComponent(PING_CONFIG.scope)}` +
-    `&redirect_uri=${encodeURIComponent(PING_CONFIG.redirectUri)}` +
-    `&code_challenge=${encodeURIComponent(codeChallenge)}` +
-    `&code_challenge_method=S256` +
-    `&state=${encodeURIComponent(state)}` +
-    `&prompt=${encodeURIComponent(prompt)}`;
+  const authUrl = buildAuthUrl(prompt, codeChallenge, state);
 
   const redirectOrigin = new URL(PING_CONFIG.redirectUri).origin;
   // Keep the auth window as small and unobtrusive as possible. For the silent
@@ -208,6 +265,10 @@ async function exchangeCodeForTokens(code: string): Promise<string> {
 // The ONLY auth function widget code should call directly.
 
 export async function getAccessToken(): Promise<string> {
+  // Step 0: did we just land back here from a silent redirectAuth() attempt?
+  const redirectResult = await consumeRedirectResult();
+  if (redirectResult && 'token' in redirectResult) return redirectResult.token;
+
   // Step 1: valid stored token
   const stored = getStoredToken();
   if (stored) return stored;
@@ -216,21 +277,20 @@ export async function getAccessToken(): Promise<string> {
   const refreshed = await silentRefresh();
   if (refreshed) return refreshed;
 
-  // Step 3: silent popup (prompt=none) — no user interaction if PingOne session is alive
-  try {
-    const code = await popupAuth('none');
+  // Step 3a: the redirect attempt already ran once and came back with an
+  // error (e.g. no PingOne session) — go straight to interactive login
+  // instead of looping back into another silent redirect.
+  if (redirectResult && 'error' in redirectResult) {
+    const code = await popupAuth('login');
     return await exchangeCodeForTokens(code);
-  } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
-
-    // Step 4: fall back to interactive login only if the session is fully expired
-    if (message === 'login_required' || message === 'timeout') {
-      const code = await popupAuth('login');
-      return await exchangeCodeForTokens(code);
-    }
-
-    throw err;
   }
+
+  // Step 3b: kick off the silent, same-frame redirect (prompt=none). This
+  // navigates the widget's own frame away — execution stops here for this
+  // page load. getAccessToken() picks the result back up (Step 0) the next
+  // time the widget mounts after PingOne redirects back.
+  await redirectAuth();
+  return new Promise<string>(() => { /* navigation in flight; page is unloading */ });
 }
 
 // ─── 7. Kong API call wrapper ────────────────────────────────────────────────────

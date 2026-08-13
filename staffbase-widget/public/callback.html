@@ -16,14 +16,25 @@
         error: params.get('error'),
         error_description: params.get('error_description')
       };
-      try {
-        if (window.opener) {
-          window.opener.postMessage(payload, '*');
-        }
-      } catch (e) {
-        /* opener unavailable — nothing more we can do */
+
+      // Popup flow (interactive login, or legacy silent popup): hand the
+      // result back to the opener via postMessage and close this window.
+      if (window.opener) {
+        try { window.opener.postMessage(payload, '*'); } catch (e) { /* opener unavailable */ }
+        window.close();
+        return;
       }
-      window.close();
+
+      // Same-frame redirect flow (silent prompt=none attempt): stash the
+      // result in sessionStorage and navigate back to the widget page that
+      // sent us here, so it can pick up where it left off after reloading.
+      try {
+        sessionStorage.setItem('pingone_redirect_result', JSON.stringify(payload));
+      } catch (e) { /* sessionStorage unavailable */ }
+
+      var returnUrl = null;
+      try { returnUrl = sessionStorage.getItem('pingone_redirect_return_url'); } catch (e) { /* ignore */ }
+      window.location.replace(returnUrl || '/');
     })();
   </script>
 </body>
