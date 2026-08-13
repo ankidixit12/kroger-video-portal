@@ -1,31 +1,13 @@
-import React, { useEffect, useState } from 'react';
-import KROGER_LOGO from '../../qumu2/staffbase-widget/public/assets/Kroger.png';
-import { STOCKQUOTE_API_URL, PLUGIN_ID, TOKEN_BASE_PATH } from './constants';
-
-async function fetchStockToken(): Promise<string> {
-  const res = await fetch(`${TOKEN_BASE_PATH}/${PLUGIN_ID}/service/token`, { credentials: 'include' });
-  if (!res.ok) throw new Error('fetchStockToken HTTP ' + res.status);
-  const json = await res.json();
-  const jwt = json?.jwt;
-  if (!jwt || typeof jwt !== 'string') throw new Error('fetchStockToken: missing or invalid JWT');
-  return jwt;
-}
-
-async function getAuthHeaders(): Promise<Record<string, string>> {
-  const token = await fetchStockToken();
-  return { Authorization_jwt: token };
-}
-
-async function apiFetchStockQuote(): Promise<Response> {
-  let res = await fetch(STOCKQUOTE_API_URL, { headers: await getAuthHeaders() });
-  if (res.status === 401) {
-    res = await fetch(STOCKQUOTE_API_URL, { headers: await getAuthHeaders() });
-  }
-  return res;
-}
+import React, { useEffect, useState, useCallback } from 'react';
+import KROGER_LOGO from '../../public/assets/Kroger.png';
+import { getAccessToken } from '../../qumu/staffbase-widget/src/services/pingone-auth';
+ 
+declare const process: { env: { STOCKQUOTE_API_URL: string } };
+ 
 interface StockData {
   name: string;
   symbol: string;
+  market?: string;
   exchange?: string;
   currentPrice: number;
   changeFromPreviousClose: number;
@@ -33,7 +15,7 @@ interface StockData {
   date: string;
   time: string;
 }
-
+ 
 const styles: Record<string, React.CSSProperties> = {
   card: {
     display: 'flex',
@@ -117,37 +99,110 @@ const styles: Record<string, React.CSSProperties> = {
     fontSize: '0.9rem',
     color: '#666',
   },
+  spinner: {
+    width: 18,
+    height: 18,
+    borderRadius: '50%',
+    border: '2px solid #e5e7eb',
+    borderTopColor: '#074085',
+    animation: 'krogerspin 0.8s linear infinite',
+    display: 'inline-block',
+  },
+  retryBtn: {
+    marginTop: '4px',
+    padding: '3px 10px',
+    fontSize: '11px',
+    fontWeight: 600,
+    color: '#fff',
+    background: '#074085',
+    border: 'none',
+    borderRadius: '4px',
+    cursor: 'pointer',
+  },
 };
-
+ 
 const KrogerStockQuote: React.FC = () => {
-  const [data, setData] = useState<StockData | null>(null);
-  const [error, setError] = useState(false);
-
-  const fetchData = () => {
-    apiFetchStockQuote()
-      .then((r) => {
-        if (!r.ok) throw new Error('HTTP ' + r.status);
-        return r.json();
+  const [authState, setAuthState] = useState<'loading' | 'ready' | 'error'>('loading');
+  const [data, setData]           = useState<StockData | null>(null);
+  const [dataError, setDataError] = useState(false);
+ 
+  const fetchData = useCallback(async () => {
+    try {
+      const token = await getAccessToken();
+      let res = await fetch(process.env.STOCKQUOTE_API_URL, {
+        headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
+      });
+      if (res.status === 401) {
+        const retryToken = await getAccessToken();
+        res = await fetch(process.env.STOCKQUOTE_API_URL, {
+          headers: { Authorization: `Bearer ${retryToken}`, Accept: 'application/json' },
+        });
+      }
+      if (!res.ok) {
+        const errBody = await res.text();
+        console.error(`[StockQuote] API error ${res.status}:`, errBody);
+        setDataError(true);
+        return;
+      }
+      const json: StockData = await res.json();
+      setData(json);
+      setDataError(false);
+    } catch (err) {
+      console.error('[StockQuote] fetch failed:', err);
+      setDataError(true);
+    }
+  }, []);
+ 
+  const runAuth = useCallback(() => {
+    setAuthState('loading');
+    getAccessToken()
+      .then(() => {
+        setAuthState('ready');
+        fetchData();
       })
-      .then((json: StockData) => { setData(json); setError(false); })
-      .catch(() => setError(true));
-  };
-
+      .catch(err => {
+        console.warn('[KrogerStockQuote] PingOne authentication failed:', String(err));
+        setAuthState('error');
+      });
+  }, [fetchData]);
+ 
   useEffect(() => {
-    fetchData();
+    runAuth();
+  }, []);
+ 
+  useEffect(() => {
+    if (authState !== 'ready') return;
     const interval = setInterval(fetchData, 30000);
     return () => clearInterval(interval);
-  }, []);
-
+  }, [authState, fetchData]);
+ 
   const renderPrice = () => {
-    if (error) return <div style={styles.status}>Unable to load</div>;
-    if (!data) return <div style={styles.status}>Loading...</div>;
-
+    if (authState === 'loading') {
+      return (
+        <>
+          <style>{'@keyframes krogerspin{to{transform:rotate(360deg)}}'}</style>
+          <span style={styles.spinner} />
+        </>
+      );
+    }
+ 
+    if (authState === 'error') {
+      return (
+        <div style={{ textAlign: 'right' }}>
+          <div style={{ ...styles.status, color: '#ef4444' }}>Sign-in failed</div>
+          <button style={styles.retryBtn} onClick={runAuth}>Retry</button>
+        </div>
+      );
+    }
+ 
+    if (dataError) return <div style={styles.status}>Unable to load</div>;
+    if (!data)     return <div style={styles.status}>Loading...</div>;
+ 
     const change = data.changeFromPreviousClose;
-    const pct = data.percentChangeFromPreviousClose;
-    const sign = change >= 0 ? '+' : '-';
+    const pct    = data.percentChangeFromPreviousClose;
+    const sign   = change >= 0 ? '+' : '-';
     const changeStyle = change >= 0 ? styles.changePositive : styles.changeNegative;
-
+ 
     return (
       <>
         <div style={styles.price}>${data.currentPrice.toFixed(2)}</div>
@@ -158,14 +213,14 @@ const KrogerStockQuote: React.FC = () => {
       </>
     );
   };
-
+ 
   return (
     <div style={styles.card}>
       <div style={styles.logo}>
         <img src={KROGER_LOGO} alt="Kroger" style={{ width: '80px', height: '80px', objectFit: 'contain' }} />
       </div>
       <div style={styles.info}>
-        <div style={styles.ticker}>{data ? `${data.exchange ?? 'NYSE'}: ${data.symbol}` : 'NYSE: KR'}</div>
+        <div style={styles.ticker}>{data ? `${data.market ?? data.exchange ?? 'NYSE'}: ${data.symbol}` : 'NYSE: KR'}</div>
         <div style={styles.company}>{data?.name ?? 'The Kroger Co.'}</div>
       </div>
       <div style={styles.priceSection}>
@@ -174,5 +229,5 @@ const KrogerStockQuote: React.FC = () => {
     </div>
   );
 };
-
+ 
 export default KrogerStockQuote;
