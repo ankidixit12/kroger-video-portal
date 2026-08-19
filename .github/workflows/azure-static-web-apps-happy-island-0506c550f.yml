@@ -33,6 +33,7 @@ jobs:
         env:
           QUMU_USERNAME: ${{ secrets.QUMU_USERNAME }}
           QUMU_PASSWORD: ${{ secrets.QUMU_PASSWORD }}
+          QUMU_API_URL: ${{ secrets.QUMU_API_URL }}
           STOCKQUOTE_API_URL: "https://stockquote-dfhmhnf4bbg0cwck.eastus2-01.azurewebsites.net/mycart-stockquote/getDelayedQuotes"
         uses: Azure/static-web-apps-deploy@v1
         with:
