@@ -44,7 +44,7 @@ export async function fetchQumuToken(): Promise<string> {
 
 async function apiHeaders(extra?: Record<string, string>): Promise<Record<string, string>> {
   const token = await getAccessToken();
-  return { Authorization_jwt: token, Authorization: `Bearer ${token}`, ...extra };
+  return { Authorization: `Bearer ${token}`, ...extra };
 }
 
 // Retries once on 401 Unauthorized with a newly fetched token.
