@@ -32,9 +32,7 @@ export const AUTH_HEADER: Record<string, string> = {};
 
 export async function fetchQumuToken(): Promise<string> {
   if (!_pluginId) throw new Error('QUMU plugin ID is not configured');
-  const res = await fetch(`${QUMU_TOKEN_BASE}/${_pluginId}/service/token`, {
-    credentials: 'include',
-  });
+  const res = await fetch(`${QUMU_TOKEN_BASE}/${_pluginId}/service/token`);
   if (!res.ok) throw new Error('fetchQumuToken HTTP ' + res.status);
   const json = await res.json();
   const jwt = json?.jwt;
@@ -49,19 +47,19 @@ async function apiHeaders(extra?: Record<string, string>): Promise<Record<string
 
 // Retries once on 401 Unauthorized with a newly fetched token.
 async function apiFetch(url: string): Promise<Response> {
-  let res = await fetch(url, { headers: await apiHeaders(), credentials: 'include' });
+  let res = await fetch(url, { headers: await apiHeaders() });
   if (res.status === 401) {
-    res = await fetch(url, { headers: await apiHeaders(), credentials: 'include' });
+    res = await fetch(url, { headers: await apiHeaders() });
   }
   return res;
 }
 
 async function apiPost(url: string, body: unknown): Promise<Response> {
   const headers = { ...(await apiHeaders()), 'Content-Type': 'application/json' };
-  let res = await fetch(url, { method: 'POST', headers, body: JSON.stringify(body), credentials: 'include' });
+  let res = await fetch(url, { method: 'POST', headers, body: JSON.stringify(body) });
   if (res.status === 401) {
     const retryHeaders = { ...(await apiHeaders()), 'Content-Type': 'application/json' };
-    res = await fetch(url, { method: 'POST', headers: retryHeaders, body: JSON.stringify(body), credentials: 'include' });
+    res = await fetch(url, { method: 'POST', headers: retryHeaders, body: JSON.stringify(body) });
   }
   return res;
 }
