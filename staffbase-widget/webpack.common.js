@@ -95,6 +95,34 @@ module.exports = [
   },
 
 
+  // ── PingOne Auth plugin (kroger-pingone-auth.js) ─────────────────────────
+  // Invisible Staffbase block. Add to the global page layout once.
+  // Handles PingOne PKCE auth via hidden iframe (no popup) and broadcasts the
+  // access token via BroadcastChannel so every other widget on the page can
+  // call requestSharedToken() from pingone-token-bridge without doing its own auth.
+  {
+    name:  'pingone-auth-plugin',
+    entry: { 'kroger-pingone-auth': './src/pingone-auth-index.tsx' },
+    output: {
+      filename: '[name].js',
+      path:     require('path').resolve(__dirname, './dist'),
+      clean:    false,
+    },
+    resolve: { extensions: ['.tsx', '.ts', '.js'] },
+    plugins: [
+      new webpack.DefinePlugin({}),
+    ],
+    module: {
+      rules: [
+        { test: /\.m?js$/,            resolve: { fullySpecified: false } },
+        { test: /\.(tsx?|jsx?)$/,     use: 'babel-loader', exclude: /node_modules/ },
+        { test: /\.svg$/,             type: 'asset/inline' },
+        { test: /\.(png|jpe?g|gif|webp)$/, type: 'asset/inline' },
+      ],
+    },
+  },
+
+
   // ── Local demo page (widget-demo.js) ───────────────────────────────────
   // React IS bundled here because widget-demo.html is a standalone page
   // with no host app supplying React.

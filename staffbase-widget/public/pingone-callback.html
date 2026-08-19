@@ -6,7 +6,6 @@
   <title>Signing in…</title>
 </head>
 <body>
-  <p>Completing sign-in… you can close this window.</p>
   <script>
     (function () {
       var params = new URLSearchParams(window.location.search);
@@ -17,9 +16,8 @@
         error_description: params.get('error_description')
       };
 
-      // Send the auth code back to whoever opened this page.
-      // - window.parent !== window  →  we are inside an iframe (new flow)
-      // - window.opener             →  we were opened as a popup (legacy flow)
+      // PingOne auth plugin callback — posts the auth code back to the
+      // parent iframe (plugin flow) or opener window (popup fallback).
       if (window.parent && window.parent !== window) {
         try { window.parent.postMessage(payload, '*'); } catch (e) {}
       } else if (window.opener) {
