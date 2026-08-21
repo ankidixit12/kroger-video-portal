@@ -9,7 +9,7 @@ let _installationId = '6a3bd7361da609538cb79dac';
 let _pluginId = '6a62f458a1562171e13f19d1';
 
 declare const process: { env: { QUMU_API_URL: string } };
-const QUMU_BASE = process.env.QUMU_API_URL;
+const QUMU_BASE = `${process.env.QUMU_API_URL}/kulus`;
 
 const QUMU_TOKEN_BASE = '/api/installations';
 
