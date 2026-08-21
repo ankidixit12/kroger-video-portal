@@ -6,6 +6,7 @@ function trimTrailingSlash(url: string): string {
 
 const qumuServiceRoot = trimTrailingSlash(process.env.QUMU_SERVICE_ROOT || '');
 
+//constants
 export const STAFFBASE_BASE_URL = trimTrailingSlash(process.env.STAFFBASE_BASE_URL || '');
 export const QUMU_KULUS_BASE_URL = trimTrailingSlash(process.env.QUMU_KULUS_BASE_URL || `${qumuServiceRoot}/kulus`);
 export const QUMU_TOKEN_BASE_URL = trimTrailingSlash(process.env.QUMU_TOKEN_BASE_URL || `${qumuServiceRoot}/api/token`);
