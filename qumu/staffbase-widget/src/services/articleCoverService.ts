@@ -123,7 +123,7 @@ async function directInjectArticleCover(thumbUrl: string): Promise<boolean> {
     try {
       // 1. GET the full current article (no CSRF needed for reads)
       _widgetFetchActive = true;
-      const getRes = await topFetch(endpoint, { credentials: 'include' });
+      const getRes = await topFetch(endpoint);
       _widgetFetchActive = false;
       console.info('[KrogerVideoWidget] GET', endpoint.replace(origin, ''), '→', getRes.status);
       if (!getRes.ok) continue;
@@ -156,7 +156,6 @@ async function directInjectArticleCover(thumbUrl: string): Promise<boolean> {
       const putRes = await topFetch(endpoint, {
         method: 'PUT',
         headers: putHeaders,
-        credentials: 'include',
         body: JSON.stringify(article),
       });
       console.info('[KrogerVideoWidget] PUT', endpoint.replace(origin, ''), '→', putRes.status);
@@ -319,7 +318,6 @@ function hookTopFetch(thumbUrl: string, qumuThumbUrl?: string): void {
                   'Content-Type': 'application/json',
                   'Origin': origin,
                 }),
-                credentials: 'include',
                 body: JSON.stringify(payload),
               });
               console.info('[KrogerVideoWidget] PUT /api/posts/ →', putRes.status);
