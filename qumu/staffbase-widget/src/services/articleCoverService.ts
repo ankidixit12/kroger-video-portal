@@ -377,6 +377,6 @@ export function injectArticleCoverImage(videoUrl: string, fallbackThumbnailUrl?:
   // Try immediate injection via GET → PUT
   directInjectArticleCover(thumbUrl).then((ok) => {
     // Install fetch hook as safety net for article save/publish only if direct injection fails
-    if (!ok) hookTopFetch(thumbUrl, fallbackThumbnailUrl);
+    if (!ok) hookTopFetch('', undefined);;
   });
 }
