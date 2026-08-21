@@ -383,8 +383,10 @@ export function injectArticleCoverImage(videoUrl: string, fallbackThumbnailUrl?:
 
   if (thumbUrl) {
     console.info('[KrogerVideoWidget] Using thumbnail URL:', thumbUrl);
-    directInjectArticleCover(thumbUrl).then((ok) => {
-      if (!ok) hookTopFetch(thumbUrl, fallbackThumbnailUrl);
+    // Direct inject sets the article cover image immediately.
+    // Always install the hook so the Qumu video PUT still fires on Save Draft.
+    directInjectArticleCover(thumbUrl).then(() => {
+      hookTopFetch(thumbUrl, fallbackThumbnailUrl);
     });
   } else {
     // No thumbnail selected — still hook so the PUT fires on Save Draft without an image.
