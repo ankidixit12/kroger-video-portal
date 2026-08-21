@@ -185,6 +185,9 @@ async function directInjectArticleCover(thumbUrl: string): Promise<boolean> {
 
 export let capturedDraftArticleId: string | null = null;
 let _widgetFetchActive = false;
+// Tracks the restore function of whichever hook is currently installed so that
+// selecting a new video tears down the previous hook before installing a fresh one.
+let _activeRestoreHooks: (() => void) | null = null;
 
 const ARTICLE_ID_PATTERNS = [
   /\/api\/articles\/([a-zA-Z0-9_-]{5,})/,
@@ -207,6 +210,12 @@ function extractIdFromUrl(url: string, origin: string): string | null {
 // ── Step 3: hook window.top.fetch (safety net on save) ────────────────────
 
 function hookTopFetch(thumbUrl: string, qumuThumbUrl?: string): void {
+  // Tear down any hook installed by a previous video selection before stacking a new one.
+  if (_activeRestoreHooks) {
+    _activeRestoreHooks();
+    _activeRestoreHooks = null;
+  }
+
   let topWin: Window;
   try { topWin = window.top as Window; } catch { return; }
 
@@ -219,6 +228,7 @@ function hookTopFetch(thumbUrl: string, qumuThumbUrl?: string): void {
   function restoreHooks(reason: string): void {
     if (hooksRestored) return;
     hooksRestored = true;
+    _activeRestoreHooks = null;
     if (restoreTimer !== null) {
       clearTimeout(restoreTimer);
       restoreTimer = null;
@@ -227,6 +237,8 @@ function hookTopFetch(thumbUrl: string, qumuThumbUrl?: string): void {
     (topWin as any).XMLHttpRequest = OrigXHR;
     console.info('[KrogerVideoWidget] Fetch/XHR hooks removed (' + reason + ').');
   }
+
+  _activeRestoreHooks = () => restoreHooks('replaced-by-new-selection');
 
   restoreTimer = setTimeout(() => {
     restoreHooks('timeout');
@@ -308,8 +320,10 @@ function hookTopFetch(thumbUrl: string, qumuThumbUrl?: string): void {
           const imageUrl = qumuThumbUrl || thumbUrl;
           (async () => {
             try {
+              const enUS: Record<string, any> = { teaser: 'This teaser should be text only.' };
+              if (imageUrl) enUS.image = imageUrl;
               const payload = {
-                contents: { en_US: { image: imageUrl, teaser: 'This teaser should be text only.' } },
+                contents: { en_US: enUS },
                 notificationChannels: ['email', 'push'],
               };
               const putRes = await originalFetch(putUrl, {
@@ -364,19 +378,17 @@ export function injectArticleCoverImage(videoUrl: string, fallbackThumbnailUrl?:
   if (!getTopOrigin() || !videoUrl) return;
 
   console.info('[KrogerVideoWidget] Starting cover image injection for video:', videoUrl);
-  
+
   const thumbUrl = fallbackThumbnailUrl;
 
-  if (!thumbUrl) {
-    console.warn('[KrogerVideoWidget] No thumbnail URL available, skipping.');
-    return;
+  if (thumbUrl) {
+    console.info('[KrogerVideoWidget] Using thumbnail URL:', thumbUrl);
+    directInjectArticleCover(thumbUrl).then((ok) => {
+      if (!ok) hookTopFetch(thumbUrl, fallbackThumbnailUrl);
+    });
+  } else {
+    // No thumbnail selected — still hook so the PUT fires on Save Draft without an image.
+    console.warn('[KrogerVideoWidget] No thumbnail — hook installed to fire PUT on Save Draft.');
+    hookTopFetch('', undefined);
   }
-
-  console.info('[KrogerVideoWidget] Using thumbnail URL:', thumbUrl);
-
-  // Try immediate injection via GET → PUT
-  directInjectArticleCover(thumbUrl).then((ok) => {
-    // Install fetch hook as safety net for article save/publish only if direct injection fails
-    if (!ok) hookTopFetch('', undefined);;
-  });
 }
