@@ -1,74 +1,86 @@
 /**
  * Article cover image injection for the Kroger/QUMU video widget (Staffbase Studio).
  *
- * On video selection:
- *   1. The caller passes the thumbnail URL for the selected video.
- *   2. A minimal PATCH sets the cover image on the server immediately (optional,
- *      see ENABLE_DIRECT_INJECTION) — only image fields are sent, never a
- *      full read-modify-write of the article.
- *   3. window.top.fetch / XMLHttpRequest are hooked as a safety net so the
- *      thumbnail is injected into the next article save/publish request.
+ * FLOW
+ *   1. Widget calls injectArticleCoverImage(videoUrl, thumbnailUrl) on selection.
+ *   2. Hooks are armed with the new thumbnail and a fresh selection token.
+ *   3. Optional immediate PATCH sets the cover right away.
+ *   4. Save hooks watch parent traffic. When an article save SUCCEEDS, a
+ *      PUT /api/posts/{id} runs AFTERWARDS to set the image.
  *
  * ---------------------------------------------------------------------------
- * FIXES FOR: "reopening an article and choosing a new video still shows the
- *             first video / first thumbnail"
+ * WHY THE PUT IS A POST-SAVE STEP, NOT A GET INTERCEPT
  * ---------------------------------------------------------------------------
+ * The original code fired PUT /api/posts/{id} from inside the XHR GET
+ * intercept. Reopening an article fires several GETs, so those PUTs raced the
+ * editor's own save — sometimes landing before it and being overwritten,
+ * sometimes after. That is the stale-thumbnail bug.
  *
- * 1. NO FULL-PAYLOAD WRITE-BACK.
- *    The old code did GET article -> mutate -> PUT the whole thing back. On a
- *    second edit the GET returns the SERVER copy, which still contains the
- *    FIRST video. PUTting it back re-asserted the stale video. We now GET only
- *    to discover the locale keys and send a minimal PATCH containing image
- *    fields alone.
+ * Now: the save is allowed through untouched, and only once its response comes
+ * back OK do we PUT the image. Writing last means we win.
  *
- * 2. HOOK STATE LIVES ON window.top, NOT IN THIS MODULE.
- *    Navigating away destroys the iframe, so module-level `_trueFetch` reset to
- *    null while window.top.fetch stayed patched — holding a closure over the
- *    OLD thumbnail. Reopening then wrapped hook #2 around hook #1, and hook #1
- *    ran last, overwriting the new thumbnail with the old one. State now lives
- *    on window.top and the hook is installed exactly once per page; new widget
- *    instances update the shared state instead of stacking wrappers.
- *
- * 3. THUMBNAIL IS READ AT CALL TIME, NEVER CAPTURED IN A CLOSURE.
- *    Even a surviving hook picks up the newest selection.
- *
- * 4. NO WRITES FROM READ INTERCEPTS.
- *    The old XHR GET intercept fired a fire-and-forget PUT /api/posts/{id}
- *    (with a placeholder teaser that clobbered real content). Reopening an
- *    article fires several GETs, so those PUTs could land AFTER the user's save
- *    and revert it. Removed — the save hook covers this.
- *
- * The Basic auth credential is retained (see API_AUTH_HEADER) but is now used
- * only as a fallback in the direct-injection path, when the cookie-authenticated
- * request is rejected. It is no longer triggered by read traffic.
+ * ---------------------------------------------------------------------------
+ * KEEPING THUMBNAIL IN SYNC WITH THE SELECTED VIDEO
+ * ---------------------------------------------------------------------------
+ *   - Shared state on window.top survives iframe teardown, so a hook installed
+ *     by a previous instance still reads the CURRENT thumbnail.
+ *   - Every selection increments `selectionToken`. An in-flight PUT whose token
+ *     no longer matches is abandoned, so a slow request from video #1 can never
+ *     land on top of video #2.
+ *   - The save-payload injection is best-effort; the post-save PUT is the
+ *     authoritative write and does NOT depend on the payload containing a title
+ *     (Save Draft may send a partial payload).
  *
  * SECURITY NOTE: API_AUTH_HEADER ships to the browser and is readable by any
- * user via devtools. Rotate it and move the call behind a backend proxy before
- * this reaches production.
+ * user via devtools. Rotate it and proxy the call server-side before this
+ * reaches production.
  */
 
 // ── Config ────────────────────────────────────────────────────────────────
 
-/** Set false to rely solely on the save-time hook (safest option). */
+/** Immediate PATCH on selection, before any save. */
 const ENABLE_DIRECT_INJECTION = true;
 
+/** PUT /api/posts/{id} after a successful article save. This is the main path. */
+const ENABLE_POST_SAVE_SYNC = true;
+
 /**
- * Fallback API credential. Used only if the cookie-authenticated PATCH is
- * rejected with 401/403.
+ * Fallback API credential, used when the cookie-authenticated request is
+ * rejected (401/403).
  *
- * WARNING: this is shipped to the browser and readable by any user. Rotate it
- * and proxy the call server-side before production.
+ * WARNING: shipped to the browser, readable by any user. Rotate + proxy.
  */
 const API_AUTH_HEADER =
   'Basic NmEwMzhmMWExMGIwZGQ3Mzc5NDI0Nzk2OnZHSkR3NSYhS2hoXm4uS3pwJkZxfjR+WXFyTkg5TiktTmxiOylJaFRuelNfZC0wM2FUMHlbMDBWcVRdN0gpdX4=';
 
-/** Set false to disable the credentialed retry entirely. */
 const USE_BASIC_AUTH_FALLBACK = true;
 
-/** How long the save hook stays armed after a video selection. */
-const HOOK_ARMED_MS = 600000; // 10 minutes
+/**
+ * Send notificationChannels on the post-save PUT.
+ * OFF by default: including this on a draft can trigger real email/push sends.
+ * Only turn it on if you have confirmed the API ignores it for drafts.
+ */
+const SEND_NOTIFICATION_CHANNELS = false;
+const NOTIFICATION_CHANNELS = ['email', 'push'];
 
-/** Optional: constrain rendered image width in the parent document. */
+/** Locale used when the article's locale layout is unknown. */
+const DEFAULT_LOCALE = 'en_US';
+
+/** Wait after a save response before writing, to let the server settle. */
+const POST_SAVE_DELAY_MS = 350;
+
+/** Collapse a burst of saves into one write. */
+const SYNC_DEBOUNCE_MS = 400;
+
+/** One retry if the write fails. */
+const SYNC_RETRY_DELAY_MS = 900;
+
+/** How long the hooks stay armed after a selection. */
+const HOOK_ARMED_MS = 600000; // 10 min
+
+/** Log the post's image field after writing, to confirm what stuck. */
+const VERIFY_AFTER_SYNC = true;
+
 const ENABLE_IMAGE_WIDTH_CSS = true;
 const IMAGE_WIDTH_CSS =
   '.news-feed-post-image { max-width: 400px; } ' +
@@ -76,23 +88,29 @@ const IMAGE_WIDTH_CSS =
 
 const LOG = '[KrogerVideoWidget]';
 
-// ── Shared cross-iframe hook state ────────────────────────────────────────
+// ── Shared cross-iframe state ─────────────────────────────────────────────
 
 const STATE_KEY = '__krogerVideoWidgetHookState__';
 
 interface HookState {
-  /** Current thumbnail. null = disarmed; hook passes everything through. */
+  /** Thumbnail for the currently selected video. null = disarmed. */
   thumbUrl: string | null;
-  /** True once window.top.fetch / XMLHttpRequest have been patched. */
+  /** Currently selected video, for logging and sanity checks. */
+  videoUrl: string | null;
+  /** Bumped on every selection. Stale async work compares against this. */
+  selectionToken: number;
   installed: boolean;
-  /** True while this module is making its own request, so we don't self-intercept. */
+  /** Suppresses self-interception while this module issues its own requests. */
   selfRequestActive: boolean;
-  /** Disarm timer handle. */
   timer: ReturnType<typeof setTimeout> | null;
-  /** True once the width CSS has been added to the parent document. */
+  syncTimer: ReturnType<typeof setTimeout> | null;
   cssInjected: boolean;
-  /** Last article ID seen on a parent-origin GET. */
-  capturedArticleId: string | null;
+  /** Article ID, from the URL or from observed traffic. */
+  articleId: string | null;
+  /** Locale keys learned from a GET, e.g. ['en_US']. */
+  localeKeys: string[] | null;
+  /** Thumbnail last written successfully, to skip redundant writes. */
+  lastSyncedThumb: string | null;
 }
 
 function getState(topWin: Window): HookState | null {
@@ -101,11 +119,16 @@ function getState(topWin: Window): HookState | null {
     if (!w[STATE_KEY]) {
       w[STATE_KEY] = {
         thumbUrl: null,
+        videoUrl: null,
+        selectionToken: 0,
         installed: false,
         selfRequestActive: false,
         timer: null,
+        syncTimer: null,
         cssInjected: false,
-        capturedArticleId: null,
+        articleId: null,
+        localeKeys: null,
+        lastSyncedThumb: null,
       } as HookState;
     }
     return w[STATE_KEY] as HookState;
@@ -114,17 +137,21 @@ function getState(topWin: Window): HookState | null {
   }
 }
 
-/** Article ID captured from the most recent parent-origin GET, if any. */
-export function getCapturedDraftArticleId(): string | null {
+function currentState(): HookState | null {
   try {
-    const state = getState(window.top as Window);
-    return state ? state.capturedArticleId : null;
+    return getState(window.top as Window);
   } catch {
     return null;
   }
 }
 
-// ── Small helpers ─────────────────────────────────────────────────────────
+/** Article ID resolved from the URL or observed traffic. */
+export function getCapturedDraftArticleId(): string | null {
+  const state = currentState();
+  return state ? state.articleId : null;
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────
 
 function topFetch(input: string, init?: RequestInit): Promise<Response> {
   try {
@@ -140,55 +167,6 @@ function getTopOrigin(): string {
   } catch {
     return '';
   }
-}
-
-function extractArticleId(): string | null {
-  try {
-    const topWin = window.top as Window;
-    const href = topWin.location.href;
-    console.info(LOG, 'Parent URL:', href);
-
-    const patterns = [
-      /\/articles?\/([a-zA-Z0-9_-]{5,})/,
-      /\/contents?\/([a-zA-Z0-9_-]{5,})/,
-      /\/news\/([a-zA-Z0-9_-]{5,})/,
-      /\/posts?\/([a-zA-Z0-9_-]{5,})/,
-      /\/edit\/([a-zA-Z0-9_-]{5,})/,
-      /[?&](?:id|contentId|articleId)=([a-zA-Z0-9_-]{5,})/,
-    ];
-    for (const pattern of patterns) {
-      const match = href.match(pattern);
-      if (match?.[1]) {
-        console.info(LOG, 'Article ID:', match[1]);
-        return match[1];
-      }
-    }
-
-    const win = topWin as any;
-    const fromGlobals =
-      win.__INITIAL_STATE__?.article?.id ||
-      win.__INITIAL_STATE__?.content?.id ||
-      win.articleData?.id ||
-      win.contentData?.id ||
-      win.__contentId__ ||
-      win.__articleId__;
-    if (fromGlobals) {
-      console.info(LOG, 'Article ID (globals):', fromGlobals);
-      return String(fromGlobals);
-    }
-  } catch {
-    /* cross-origin */
-  }
-
-  // Fall back to whatever a GET intercept saw.
-  const captured = getCapturedDraftArticleId();
-  if (captured) {
-    console.info(LOG, 'Article ID (captured from GET):', captured);
-    return captured;
-  }
-
-  console.warn(LOG, 'Could not determine article ID.');
-  return null;
 }
 
 const ARTICLE_ID_PATTERNS = [
@@ -209,6 +187,45 @@ function extractIdFromUrl(url: string, origin: string): string | null {
   return null;
 }
 
+function extractArticleIdFromLocation(): string | null {
+  try {
+    const href = (window.top as Window).location.href;
+    const patterns = [
+      /\/articles?\/([a-zA-Z0-9_-]{5,})/,
+      /\/contents?\/([a-zA-Z0-9_-]{5,})/,
+      /\/news\/([a-zA-Z0-9_-]{5,})/,
+      /\/posts?\/([a-zA-Z0-9_-]{5,})/,
+      /\/edit\/([a-zA-Z0-9_-]{5,})/,
+      /[?&](?:id|contentId|articleId)=([a-zA-Z0-9_-]{5,})/,
+    ];
+    for (const pattern of patterns) {
+      const match = href.match(pattern);
+      if (match?.[1]) return match[1];
+    }
+
+    const win = window.top as any;
+    const fromGlobals =
+      win.__INITIAL_STATE__?.article?.id ||
+      win.__INITIAL_STATE__?.content?.id ||
+      win.articleData?.id ||
+      win.contentData?.id ||
+      win.__contentId__ ||
+      win.__articleId__;
+    if (fromGlobals) return String(fromGlobals);
+  } catch {
+    /* cross-origin */
+  }
+  return null;
+}
+
+/** Prefer an ID seen in traffic — on a brand-new draft the URL has none yet. */
+function resolveArticleId(state: HookState | null): string | null {
+  if (state?.articleId) return state.articleId;
+  const fromLocation = extractArticleIdFromLocation();
+  if (fromLocation && state) state.articleId = fromLocation;
+  return fromLocation;
+}
+
 function isArticleEndpoint(url: string): boolean {
   return (
     url.includes('/api/articles/') ||
@@ -220,10 +237,6 @@ function isArticleEndpoint(url: string): boolean {
   );
 }
 
-/**
- * Autosave payloads omit the title. Injecting into those produced partial
- * writes, so we only touch payloads that look like a real save.
- */
 function hasTitleInPayload(payload: any): boolean {
   if (!payload || typeof payload !== 'object') return false;
   if (payload.title != null) return true;
@@ -245,12 +258,18 @@ function findLocaleKeys(contents: any): string[] {
   );
 }
 
-// ── Payload mutation ──────────────────────────────────────────────────────
+function rememberLocaleKeys(state: HookState | null, payload: any): void {
+  if (!state) return;
+  const keys = findLocaleKeys(payload?.contents);
+  if (keys.length > 0) state.localeKeys = keys;
+}
 
-/**
- * Overwrite (never merge) every known cover-image field. Assigning fresh
- * objects each time means a re-save can't retain a previous thumbnail.
- */
+function localesFor(state: HookState | null): string[] {
+  return state?.localeKeys?.length ? state.localeKeys : [DEFAULT_LOCALE];
+}
+
+// ── Payload mutation (best-effort, on the save request itself) ─────────────
+
 function injectThumbnailIntoPayload(payload: any, thumbUrl: string): void {
   if (!payload || typeof payload !== 'object') return;
 
@@ -282,39 +301,204 @@ function injectThumbnailIntoPayload(payload: any, thumbUrl: string): void {
   }
 }
 
-/** Minimal image-only patch body, shaped to match the article's locale layout. */
-function buildMinimalImagePatch(article: any, thumbUrl: string): Record<string, any> {
-  const imageWithType = { url: thumbUrl, type: 'image/jpeg' };
-  const imageRef = { url: thumbUrl };
+// ── Authoritative write: PUT /api/posts/{id} ──────────────────────────────
 
-  const body: Record<string, any> = {
-    thumbnail: imageWithType,
-    headerImage: imageRef,
-    coverImage: imageRef,
-  };
+/**
+ * Body shape matches the call that was verified working against Staffbase:
+ * contents[locale].image as a plain URL string.
+ * The teaser is deliberately NOT sent — the old code overwrote it with
+ * placeholder text on every save.
+ */
+function buildPostImageBody(state: HookState | null, thumbUrl: string): Record<string, any> {
+  const contents: Record<string, any> = {};
+  localesFor(state).forEach((locale) => {
+    contents[locale] = { image: thumbUrl };
+  });
 
-  const localeKeys = findLocaleKeys(article?.contents);
-  if (localeKeys.length > 0) {
-    body.contents = {};
-    localeKeys.forEach((localeKey) => {
-      body.contents[localeKey] = {
-        image: thumbUrl,
-        feedImage: imageRef,
-        thumbnail: imageWithType,
-      };
-    });
-  } else if (article?.contents && typeof article.contents === 'object') {
-    body.contents = {
-      image: thumbUrl,
-      feedImage: imageRef,
-      thumbnail: imageWithType,
-    };
-  }
-
+  const body: Record<string, any> = { contents };
+  if (SEND_NOTIFICATION_CHANNELS) body.notificationChannels = NOTIFICATION_CHANNELS;
   return body;
 }
 
-// ── Optional parent-document CSS ──────────────────────────────────────────
+async function putWithAuthFallback(
+  url: string,
+  body: Record<string, any>,
+  state: HookState | null,
+  label: string
+): Promise<boolean> {
+  const payload = JSON.stringify(body);
+
+  // Attempt 1 — the editor's own session.
+  try {
+    if (state) state.selfRequestActive = true;
+    const res = await topFetch(url, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+      credentials: 'include',
+      body: payload,
+    });
+    if (state) state.selfRequestActive = false;
+
+    console.info(LOG, label, 'PUT (session) ->', res.status);
+    if (res.ok) return true;
+
+    const errBody = await res.text().catch(() => '');
+    console.warn(LOG, label, 'PUT (session) error body:', errBody);
+
+    if (!USE_BASIC_AUTH_FALLBACK || (res.status !== 401 && res.status !== 403)) return false;
+  } catch (e) {
+    if (state) state.selfRequestActive = false;
+    console.warn(LOG, label, 'PUT (session) failed:', e);
+    if (!USE_BASIC_AUTH_FALLBACK) return false;
+  }
+
+  // Attempt 2 — API credential.
+  // `Origin` is a forbidden header and cannot be set from fetch; the browser
+  // supplies it. Setting it in code was a no-op.
+  try {
+    if (state) state.selfRequestActive = true;
+    const res = await topFetch(url, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+        Authorization: API_AUTH_HEADER,
+      },
+      credentials: 'omit',
+      body: payload,
+    });
+    if (state) state.selfRequestActive = false;
+
+    console.info(LOG, label, 'PUT (api credential) ->', res.status);
+    if (res.ok) return true;
+
+    const errBody = await res.text().catch(() => '');
+    console.warn(LOG, label, 'PUT (api credential) error body:', errBody);
+  } catch (e) {
+    if (state) state.selfRequestActive = false;
+    console.warn(LOG, label, 'PUT (api credential) failed:', e);
+  }
+
+  return false;
+}
+
+async function verifySyncedImage(origin: string, articleId: string, state: HookState | null): Promise<void> {
+  if (!VERIFY_AFTER_SYNC) return;
+  try {
+    if (state) state.selfRequestActive = true;
+    const res = await topFetch(`${origin}/api/posts/${articleId}`, { credentials: 'include' });
+    if (state) state.selfRequestActive = false;
+    if (!res.ok) return;
+
+    const post = await res.json();
+    rememberLocaleKeys(state, post);
+    const locale = localesFor(state)[0];
+    console.info(LOG, 'Verified stored image:', post?.contents?.[locale]?.image ?? '(none)');
+  } catch {
+    if (state) state.selfRequestActive = false;
+  }
+}
+
+/** The authoritative write. Aborts if the selection changed underneath it. */
+async function syncThumbnailToPost(reason: string, isRetry = false): Promise<boolean> {
+  if (!ENABLE_POST_SAVE_SYNC) return false;
+
+  const state = currentState();
+  const origin = getTopOrigin();
+  if (!state || !origin) return false;
+
+  const thumbUrl = state.thumbUrl;
+  const token = state.selectionToken;
+  if (!thumbUrl) {
+    console.info(LOG, 'Sync skipped — no armed thumbnail.');
+    return false;
+  }
+
+  const articleId = resolveArticleId(state);
+  if (!articleId) {
+    console.warn(LOG, 'Sync skipped — no article ID yet.');
+    return false;
+  }
+
+  console.info(LOG, `Syncing thumbnail (${reason}) for post ${articleId}:`, thumbUrl);
+  console.info(LOG, 'Selected video:', state.videoUrl ?? '(unknown)');
+
+  const url = `${origin}/api/posts/${articleId}`;
+  const ok = await putWithAuthFallback(url, buildPostImageBody(state, thumbUrl), state, 'sync');
+
+  // A newer video was picked while this was in flight — discard the result so
+  // an older thumbnail can never be treated as current.
+  if (state.selectionToken !== token) {
+    console.info(LOG, 'Selection changed during sync — discarding stale result.');
+    return false;
+  }
+
+  if (ok) {
+    state.lastSyncedThumb = thumbUrl;
+    console.info(LOG, 'Thumbnail synced to post:', thumbUrl);
+    void verifySyncedImage(origin, articleId, state);
+    return true;
+  }
+
+  if (!isRetry) {
+    console.info(LOG, `Sync failed — retrying in ${SYNC_RETRY_DELAY_MS}ms.`);
+    setTimeout(() => {
+      const s = currentState();
+      if (s && s.selectionToken === token) void syncThumbnailToPost(reason + ' retry', true);
+    }, SYNC_RETRY_DELAY_MS);
+  }
+
+  return false;
+}
+
+/** Debounced trigger — a save burst produces one write. */
+function scheduleThumbnailSync(reason: string, delayMs = SYNC_DEBOUNCE_MS): void {
+  const state = currentState();
+  if (!state || !state.thumbUrl) return;
+
+  if (state.syncTimer !== null) clearTimeout(state.syncTimer);
+  state.syncTimer = setTimeout(() => {
+    state.syncTimer = null;
+    void syncThumbnailToPost(reason);
+  }, delayMs);
+}
+
+// ── Optional immediate PATCH on selection ─────────────────────────────────
+
+async function directInjectArticleCover(thumbUrl: string): Promise<boolean> {
+  if (!ENABLE_DIRECT_INJECTION) return false;
+
+  const state = currentState();
+  const origin = getTopOrigin();
+  const articleId = resolveArticleId(state);
+  if (!origin || !articleId) return false;
+
+  // Learn the locale layout so later writes target the right keys.
+  try {
+    if (state) state.selfRequestActive = true;
+    const getRes = await topFetch(`${origin}/api/posts/${articleId}`, { credentials: 'include' });
+    if (state) state.selfRequestActive = false;
+    if (getRes.ok) {
+      const post = await getRes.json();
+      rememberLocaleKeys(state, post);
+      console.info(LOG, 'Locales detected:', localesFor(state).join(', '));
+    }
+  } catch {
+    if (state) state.selfRequestActive = false;
+  }
+
+  const url = `${origin}/api/posts/${articleId}`;
+  const ok = await putWithAuthFallback(url, buildPostImageBody(state, thumbUrl), state, 'immediate');
+  if (ok) {
+    console.info(LOG, 'Cover image set immediately:', thumbUrl);
+    if (state) state.lastSyncedThumb = thumbUrl;
+  } else {
+    console.info(LOG, 'Immediate set failed — will sync after the next save.');
+  }
+  return ok;
+}
+
+// ── Parent CSS ────────────────────────────────────────────────────────────
 
 function injectImageWidthCss(topWin: Window, state: HookState): void {
   if (!ENABLE_IMAGE_WIDTH_CSS || state.cssInjected) return;
@@ -330,122 +514,7 @@ function injectImageWidthCss(topWin: Window, state: HookState): void {
   }
 }
 
-// ── Step 2: immediate minimal PATCH ───────────────────────────────────────
-
-async function directInjectArticleCover(thumbUrl: string): Promise<boolean> {
-  if (!ENABLE_DIRECT_INJECTION) return false;
-
-  const origin = getTopOrigin();
-  const articleId = extractArticleId();
-  if (!origin || !articleId) return false;
-
-  const state = getState(window.top as Window);
-
-  const endpoints = [
-    `${origin}/api/articles/${articleId}`,
-    `${origin}/api/v3/contents/${articleId}`,
-    `${origin}/api/content/${articleId}`,
-    `${origin}/api/posts/${articleId}`,
-  ];
-
-  for (const endpoint of endpoints) {
-    const shortPath = endpoint.replace(origin, '');
-    try {
-      // GET is used ONLY to confirm the endpoint and learn the locale layout.
-      // Its body is never echoed back — that is what re-asserted the old video.
-      if (state) state.selfRequestActive = true;
-      const getRes = await topFetch(endpoint, { credentials: 'include' });
-      if (state) state.selfRequestActive = false;
-
-      console.info(LOG, 'GET', shortPath, '->', getRes.status);
-      if (!getRes.ok) continue;
-
-      const csrfToken =
-        getRes.headers.get('X-CSRF-Token') ||
-        getRes.headers.get('X-XSRF-TOKEN') ||
-        getRes.headers.get('csrf-token') ||
-        null;
-
-      const article = await getRes.json();
-      const patchBody = buildMinimalImagePatch(article, thumbUrl);
-
-      const headers: Record<string, string> = {
-        'Content-Type': 'application/json',
-        Accept: 'application/json',
-      };
-      if (csrfToken) {
-        headers['X-CSRF-Token'] = csrfToken;
-        headers['X-XSRF-TOKEN'] = csrfToken;
-      }
-
-      // PATCH merges server-side. PUT would replace the document with our
-      // partial body, so do not switch this to PUT.
-      if (state) state.selfRequestActive = true;
-      const patchRes = await topFetch(endpoint, {
-        method: 'PATCH',
-        headers,
-        credentials: 'include',
-        body: JSON.stringify(patchBody),
-      });
-      if (state) state.selfRequestActive = false;
-
-      console.info(LOG, 'PATCH', shortPath, '->', patchRes.status);
-
-      if (patchRes.ok) {
-        console.info(LOG, 'Cover image set directly:', thumbUrl);
-        return true;
-      }
-
-      try {
-        const errBody = await patchRes.text();
-        console.warn(LOG, 'PATCH error body:', errBody);
-      } catch {
-        /* ignore */
-      }
-
-      // Session cookie was rejected — retry once with the API credential.
-      // Note: `Origin` is a forbidden header and cannot be set from fetch;
-      // the browser sets it automatically.
-      if (USE_BASIC_AUTH_FALLBACK && (patchRes.status === 401 || patchRes.status === 403)) {
-        try {
-          if (state) state.selfRequestActive = true;
-          const authRes = await topFetch(endpoint, {
-            method: 'PATCH',
-            headers: {
-              'Content-Type': 'application/json',
-              Accept: 'application/json',
-              Authorization: API_AUTH_HEADER,
-            },
-            credentials: 'omit',
-            body: JSON.stringify(patchBody),
-          });
-          if (state) state.selfRequestActive = false;
-
-          console.info(LOG, 'PATCH (api credential)', shortPath, '->', authRes.status);
-
-          if (authRes.ok) {
-            console.info(LOG, 'Cover image set via API credential:', thumbUrl);
-            return true;
-          }
-
-          const authErr = await authRes.text().catch(() => '');
-          console.warn(LOG, 'PATCH (api credential) error body:', authErr);
-        } catch (e) {
-          if (state) state.selfRequestActive = false;
-          console.warn(LOG, 'PATCH (api credential) failed:', e);
-        }
-      }
-    } catch (e) {
-      if (state) state.selfRequestActive = false;
-      console.warn(LOG, 'Error with', shortPath, e);
-    }
-  }
-
-  console.warn(LOG, 'Direct injection failed — thumbnail will be injected on next save.');
-  return false;
-}
-
-// ── Step 3: install save-time hooks (once per parent page) ────────────────
+// ── Save hooks (installed once per parent page) ───────────────────────────
 
 function installHooks(topWin: Window, state: HookState): void {
   if (state.installed) return;
@@ -458,9 +527,7 @@ function installHooks(topWin: Window, state: HookState): void {
 
   // ---- fetch ----
   w.fetch = function (input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
-    // Read the CURRENT thumbnail — never a closure capture.
-    const thumbUrl = state.thumbUrl;
-    if (!thumbUrl || state.selfRequestActive) return originalFetch(input, init);
+    if (state.selfRequestActive) return originalFetch(input, init);
 
     const url =
       typeof input === 'string'
@@ -470,37 +537,59 @@ function installHooks(topWin: Window, state: HookState): void {
           : (input as Request).url;
     const method = (init?.method || 'GET').toUpperCase();
 
+    if (!url.startsWith(origin)) return originalFetch(input, init);
+
+    // Reads: observe the article ID only, never write.
     if (method === 'GET') {
       const id = extractIdFromUrl(url, origin);
-      if (id) state.capturedArticleId = id;
+      if (id) state.articleId = id;
       return originalFetch(input, init);
     }
 
-    const isMutating =
-      url.startsWith(origin) &&
-      (method === 'PATCH' || method === 'PUT' || method === 'POST') &&
-      typeof init?.body === 'string';
+    const isMutating = method === 'PATCH' || method === 'PUT' || method === 'POST';
+    if (!isMutating || !isArticleEndpoint(url)) return originalFetch(input, init);
 
-    if (isMutating && isArticleEndpoint(url)) {
+    const idFromSave = extractIdFromUrl(url, origin);
+    if (idFromSave) state.articleId = idFromSave;
+
+    console.info(LOG, 'Article save seen:', method, url.replace(origin, ''));
+
+    let request: Promise<Response>;
+
+    // Best-effort injection into the save body itself.
+    if (state.thumbUrl && typeof init?.body === 'string') {
       try {
-        const body = JSON.parse(init!.body as string);
-        console.info(LOG, 'Article save intercepted:', method, url.replace(origin, ''));
+        const body = JSON.parse(init.body);
+        rememberLocaleKeys(state, body);
 
-        if (!hasTitleInPayload(body)) {
-          console.info(LOG, 'Skipping — no title in payload (autosave).');
+        if (hasTitleInPayload(body)) {
+          injectThumbnailIntoPayload(body, state.thumbUrl);
+          console.info(LOG, 'Thumbnail injected into save payload:', state.thumbUrl);
+          request = originalFetch(input, { ...init, body: JSON.stringify(body) });
         } else {
-          injectThumbnailIntoPayload(body, thumbUrl);
-          console.info(LOG, 'Thumbnail injected into save payload:', thumbUrl);
-          // The hook stays installed and armed: an editor may fire several
-          // saves (draft, then publish) and each one needs the current value.
-          return originalFetch(input, { ...init, body: JSON.stringify(body) });
+          // Autosave / partial payload — leave it alone. The post-save PUT
+          // below still runs, which is why draft saves now work.
+          console.info(LOG, 'Partial payload (no title) — relying on post-save sync.');
+          request = originalFetch(input, init);
         }
-      } catch (e) {
-        console.warn(LOG, 'Could not parse body:', e);
+      } catch {
+        request = originalFetch(input, init);
       }
+    } else {
+      request = originalFetch(input, init);
     }
 
-    return originalFetch(input, init);
+    // The authoritative write, AFTER the save lands.
+    request
+      .then((res) => {
+        if (res.ok && state.thumbUrl) {
+          console.info(LOG, 'Save succeeded -> scheduling thumbnail sync.');
+          scheduleThumbnailSync('after fetch save', POST_SAVE_DELAY_MS);
+        }
+      })
+      .catch(() => {});
+
+    return request;
   };
 
   // ---- XMLHttpRequest ----
@@ -518,31 +607,47 @@ function installHooks(topWin: Window, state: HookState): void {
     };
 
     xhr.send = function (body: any) {
-      const thumbUrl = state.thumbUrl;
-      if (!thumbUrl || state.selfRequestActive) return originalSend(body);
+      if (state.selfRequestActive || !url.startsWith(origin)) return originalSend(body);
 
-      // Reads are observed only. They must never trigger a write.
+      // Reads: observe only.
       if (method === 'GET') {
-        if (url.startsWith(origin)) {
-          const id = extractIdFromUrl(url, origin);
-          if (id) state.capturedArticleId = id;
-        }
+        const id = extractIdFromUrl(url, origin);
+        if (id) state.articleId = id;
         return originalSend(body);
       }
 
-      const isMutating =
-        url.startsWith(origin) && (method === 'PATCH' || method === 'PUT' || method === 'POST');
+      const isMutating = method === 'PATCH' || method === 'PUT' || method === 'POST';
+      if (!isMutating || !isArticleEndpoint(url)) return originalSend(body);
 
-      if (isMutating && isArticleEndpoint(url) && typeof body === 'string') {
+      const idFromSave = extractIdFromUrl(url, origin);
+      if (idFromSave) state.articleId = idFromSave;
+
+      console.info(LOG, 'Article save seen (XHR):', method, url.replace(origin, ''));
+
+      // Fire the authoritative write once this save completes.
+      xhr.addEventListener('loadend', function () {
+        const status = xhr.status;
+        if (status >= 200 && status < 300 && state.thumbUrl) {
+          console.info(LOG, 'XHR save succeeded -> scheduling thumbnail sync.');
+          scheduleThumbnailSync('after XHR save', POST_SAVE_DELAY_MS);
+        } else if (state.thumbUrl) {
+          console.info(LOG, 'XHR save returned', status, '— no sync.');
+        }
+      });
+
+      // Best-effort injection into the save body.
+      if (state.thumbUrl && typeof body === 'string') {
         try {
           const parsed = JSON.parse(body);
+          rememberLocaleKeys(state, parsed);
           if (hasTitleInPayload(parsed)) {
-            injectThumbnailIntoPayload(parsed, thumbUrl);
-            console.info(LOG, 'XHR thumbnail injected:', thumbUrl);
+            injectThumbnailIntoPayload(parsed, state.thumbUrl);
+            console.info(LOG, 'XHR thumbnail injected:', state.thumbUrl);
             return originalSend(JSON.stringify(parsed));
           }
+          console.info(LOG, 'Partial XHR payload (no title) — relying on post-save sync.');
         } catch {
-          /* not JSON — pass through */
+          /* not JSON */
         }
       }
 
@@ -555,8 +660,7 @@ function installHooks(topWin: Window, state: HookState): void {
   console.info(LOG, 'Save hooks installed on parent window.');
 }
 
-/** Arm (or re-arm) the hooks with the newest thumbnail. */
-function armHooks(thumbUrl: string): void {
+function armHooks(videoUrl: string, thumbUrl: string): void {
   let topWin: Window;
   try {
     topWin = window.top as Window;
@@ -568,12 +672,20 @@ function armHooks(thumbUrl: string): void {
   if (!state) return;
 
   // Update shared state FIRST so an already-installed hook — possibly from a
-  // previous iframe instance — immediately uses the new thumbnail.
+  // previous iframe instance — immediately uses the new values.
   state.thumbUrl = thumbUrl;
+  state.videoUrl = videoUrl;
+  state.selectionToken += 1;
+  state.lastSyncedThumb = null;
 
+  if (state.syncTimer !== null) {
+    clearTimeout(state.syncTimer);
+    state.syncTimer = null;
+  }
   if (state.timer !== null) clearTimeout(state.timer);
   state.timer = setTimeout(() => {
     state.thumbUrl = null;
+    state.videoUrl = null;
     state.timer = null;
     console.info(LOG, 'Save hooks disarmed (timeout).');
   }, HOOK_ARMED_MS);
@@ -581,16 +693,16 @@ function armHooks(thumbUrl: string): void {
   installHooks(topWin, state);
   injectImageWidthCss(topWin, state);
 
-  console.info(LOG, 'Save hooks armed with thumbnail:', thumbUrl);
+  console.info(LOG, 'Armed. selection #' + state.selectionToken, '| thumb:', thumbUrl);
 }
 
 // ── Public entry points ───────────────────────────────────────────────────
 
 /**
- * Call whenever the user selects (or changes) a video.
+ * Call whenever the user selects OR changes a video.
  *
- * @param videoUrl           URL of the selected video (logging / validation).
- * @param thumbnailUrl       Thumbnail to use as the article cover image.
+ * @param videoUrl      URL of the selected video.
+ * @param thumbnailUrl  Thumbnail to use as the article cover image.
  */
 export function injectArticleCoverImage(videoUrl: string, thumbnailUrl?: string): void {
   if (!getTopOrigin() || !videoUrl) return;
@@ -600,32 +712,33 @@ export function injectArticleCoverImage(videoUrl: string, thumbnailUrl?: string)
     return;
   }
 
-  console.info(LOG, 'Cover image injection for video:', videoUrl);
-  console.info(LOG, 'Using thumbnail URL:', thumbnailUrl);
+  console.info(LOG, 'Video selected:', videoUrl);
+  console.info(LOG, 'Thumbnail:', thumbnailUrl);
 
-  // Arm the save hook first, so a save that happens mid-PATCH still carries
-  // the new thumbnail.
-  armHooks(thumbnailUrl);
-
+  armHooks(videoUrl, thumbnailUrl);
   void directInjectArticleCover(thumbnailUrl);
 }
 
-/**
- * Disarm injection — e.g. when the user removes the video from the article.
- * Hooks stay installed as transparent pass-throughs; restoring the originals
- * would clobber any patches applied by other code after ours.
- */
+/** Force the write immediately — e.g. from the widget's own save handler. */
+export function syncThumbnailNow(): Promise<boolean> {
+  return syncThumbnailToPost('manual');
+}
+
+/** Disarm — e.g. when the video is removed from the article. */
 export function clearArticleCoverInjection(): void {
-  try {
-    const state = getState(window.top as Window);
-    if (!state) return;
-    state.thumbUrl = null;
-    if (state.timer !== null) {
-      clearTimeout(state.timer);
-      state.timer = null;
-    }
-    console.info(LOG, 'Cover image injection cleared.');
-  } catch {
-    /* cross-origin */
+  const state = currentState();
+  if (!state) return;
+
+  state.thumbUrl = null;
+  state.videoUrl = null;
+  state.selectionToken += 1;
+  if (state.timer !== null) {
+    clearTimeout(state.timer);
+    state.timer = null;
   }
+  if (state.syncTimer !== null) {
+    clearTimeout(state.syncTimer);
+    state.syncTimer = null;
+  }
+  console.info(LOG, 'Cover image injection cleared.');
 }
