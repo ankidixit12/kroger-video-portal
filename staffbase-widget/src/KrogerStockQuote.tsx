@@ -130,12 +130,12 @@ const KrogerStockQuote: React.FC = () => {
     try {
       const token = await getAccessToken();
       let res = await fetch(process.env.STOCKQUOTE_API_URL, {
-        headers: { Authorization_jwt: `Bearer ${token}`, Authorization: `Bearer ${token}`, Accept: 'application/json' },
+        headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
       });
       if (res.status === 401) {
         const retryToken = await getAccessToken();
         res = await fetch(process.env.STOCKQUOTE_API_URL, {
-          headers: { Authorization_jwt: `Bearer ${retryToken}`, Authorization: `Bearer ${retryToken}`, Accept: 'application/json' },
+          headers: { Authorization: `Bearer ${retryToken}`, Accept: 'application/json' },
         });
       }
       if (!res.ok) {
