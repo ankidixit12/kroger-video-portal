@@ -13,9 +13,7 @@ const icon = 'data:image/svg+xml;base64,Cjxzdmcgd2lkdGg9IjQ4IiBoZWlnaHQ9IjQ4IiB2
 const configurationSchema = {
   $schema: 'http://json-schema.org/draft-07/schema',
   type: 'object' as const,
-  properties: {
-    ticker: { type: 'string' as const, title: 'Stock Ticker Symbol' },
-  },
+  properties: {},
 };
 
 const uiSchema = {};
@@ -60,7 +58,7 @@ const factory: BlockFactory = (BaseBlockClass, widgetApi) => {
     }
 
     public static get observedAttributes(): string[] {
-      return ['ticker'];
+      return [];
     }
   };
 };
@@ -68,7 +66,7 @@ const factory: BlockFactory = (BaseBlockClass, widgetApi) => {
 const blockDefinition: BlockDefinition = {
   name: 'kroger-stockquote',
   factory,
-  attributes: ['ticker'],
+  attributes: [],
   blockLevel: 'block',
   configurationSchema,
   uiSchema,
