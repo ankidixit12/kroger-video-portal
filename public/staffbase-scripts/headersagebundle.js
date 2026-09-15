@@ -4,7 +4,7 @@
   // ============ CONFIGURATION ============
   var CONFIG = {
     buttonText: 'Ask Sage',
-    redirectUrl: 'https://auth.pingone.com/6c0241eb-6d4c-4b98-bdfb-5ab44b0d7112/as/authorize?response_type=code&client_id=4f387fcc-7296-4307-9576-024545986701&redirect_uri=https%3A%2F%2Fsage-frontend-uat.kroger-nonprod-cluster-f40f61a16d8a9e75eea30e463991caf4-0000.us-south.containers.appdomain.cloud%2Foauth%2Fping%2Fcallback&code_challenge=fbRx16h0GaEvDU-tHAnOq22GoaxW4NjWH4EM8O4uJdo&code_challenge_method=S256&state=64SCO5NbF58Vw65FiXSSVQfe_2gnAAOd4xL42fS3CoU&scope=openid+HRDA%3AProfile+HRDA%3AProfile%3ADev17+HRDA%3AProfile%3ADev29%22',
+    redirectUrl: 'https://chat.kroger-sage-prod-cluster-f40f61a16d8a9e75eea30e463991caf4-0000.us-east.containers.appdomain.cloud',
     tooltipText: 'How can I help today?',
     iconUrl: 'https://krogerstoragesage.z20.web.core.windows.net/SageLogo.png',
     iconWidth: 22.052,
